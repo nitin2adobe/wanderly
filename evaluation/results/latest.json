@@ -1,0 +1,1867 @@
+{
+  "timestamp": "2026-09-26T21:06:34.979Z",
+  "provider": "mock",
+  "model": "wanderly-mock-v1",
+  "mode": "mock",
+  "datasetVersion": "phase-c-v1",
+  "runs": 2,
+  "summary": {
+    "rules": {
+      "total": 31,
+      "accuracy": 0.8064516129032258,
+      "assistPrecision": 0.8571428571428571,
+      "assistRecall": 0.6666666666666666,
+      "unnecessaryInterruptionRate": 0.07692307692307693,
+      "missedAssistanceRate": 0,
+      "waitAccuracy": 0.8888888888888888,
+      "silentAccuracy": 0.8461538461538461,
+      "confusionMatrix": {
+        "SILENT": {
+          "SILENT": 11,
+          "WAIT": 1,
+          "ASSIST": 1
+        },
+        "WAIT": {
+          "SILENT": 1,
+          "WAIT": 8,
+          "ASSIST": 0
+        },
+        "ASSIST": {
+          "SILENT": 0,
+          "WAIT": 3,
+          "ASSIST": 6
+        }
+      }
+    },
+    "ai": {
+      "total": 31,
+      "accuracy": 0.7419354838709677,
+      "assistPrecision": 0.8571428571428571,
+      "assistRecall": 0.6666666666666666,
+      "unnecessaryInterruptionRate": 0.07692307692307693,
+      "missedAssistanceRate": 0,
+      "waitAccuracy": 0.5555555555555556,
+      "silentAccuracy": 0.9230769230769231,
+      "confusionMatrix": {
+        "SILENT": {
+          "SILENT": 12,
+          "WAIT": 0,
+          "ASSIST": 1
+        },
+        "WAIT": {
+          "SILENT": 4,
+          "WAIT": 5,
+          "ASSIST": 0
+        },
+        "ASSIST": {
+          "SILENT": 0,
+          "WAIT": 3,
+          "ASSIST": 6
+        }
+      }
+    }
+  },
+  "latencyMs": {
+    "average": 0.06064516129032243,
+    "p50": 0.01,
+    "p95": 0.09
+  },
+  "tokenUsage": null,
+  "journeys": [
+    {
+      "id": "healthy-maldives-booking",
+      "name": "Direct Maldives booking",
+      "description": "A short, decisive path from destination to booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Clear forward progression means interruption adds cost.",
+      "category": "HEALTHY_PROGRESSION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "healthy-maldives-booking",
+        "name": "Direct Maldives booking",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "healthy-maldives-booking",
+        "name": "Direct Maldives booking",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          2.36,
+          0.08
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "healthy-japan-booking",
+      "name": "Focused Japan planning",
+      "description": "The visitor views Japan, a package, and starts booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "cities-seasons"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Activity is coherent and moves toward booking.",
+      "category": "HEALTHY_PROGRESSION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "healthy-japan-booking",
+        "name": "Focused Japan planning",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "healthy-japan-booking",
+        "name": "Focused Japan planning",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.06,
+          0.23
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "healthy-switzerland-details",
+      "name": "Alpine details then dates",
+      "description": "High activity remains within one destination and ends with dates.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "switzerland"
+        ],
+        [
+          "HOTEL_VIEW",
+          "alpine-stay"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "rail"
+        ],
+        [
+          "DATE_SEARCH"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "High activity is healthy when it supports progression.",
+      "category": "HEALTHY_PROGRESSION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "healthy-switzerland-details",
+        "name": "Alpine details then dates",
+        "expected": "SILENT",
+        "predicted": "WAIT",
+        "correct": false,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "healthy-switzerland-details",
+        "name": "Alpine details then dates",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The current context does not show meaningful unresolved friction."
+        ],
+        "latenciesMs": [
+          0.09,
+          0.03
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "healthy-package-booking",
+      "name": "Package selected directly",
+      "description": "Package exploration ends in booking without comparison.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "island-rhythm"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "The visitor appears to have selected a path independently.",
+      "category": "HEALTHY_PROGRESSION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "healthy-package-booking",
+        "name": "Package selected directly",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "healthy-package-booking",
+        "name": "Package selected directly",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.06,
+          0.03
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "healthy-repeat-destination",
+      "name": "Return to chosen destination",
+      "description": "The visitor briefly revisits a chosen destination before dates.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Repeated viewing without switching is not evidence of friction.",
+      "category": "HEALTHY_PROGRESSION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "healthy-repeat-destination",
+        "name": "Return to chosen destination",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "healthy-repeat-destination",
+        "name": "Return to chosen destination",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.04,
+          0.03
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "compare-bali-maldives-loop",
+      "name": "Unresolved island comparison",
+      "description": "Repeated switching precedes comparison with no forward progress.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "DESTINATION_COMPARISON",
+      "rationale": "Backtracking plus comparison suggests an unresolved destination choice.",
+      "category": "DESTINATION_COMPARISON",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "compare-bali-maldives-loop",
+        "name": "Unresolved island comparison",
+        "expected": "ASSIST",
+        "predicted": "ASSIST",
+        "correct": true,
+        "reason": "Repeated destination switching plus comparison activity suggests an unresolved selection decision."
+      },
+      "ai": {
+        "id": "compare-bali-maldives-loop",
+        "name": "Unresolved island comparison",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "DESTINATION_COMPARISON",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated switching and comparison suggest the destination choice remains unresolved."
+        ],
+        "latenciesMs": [
+          0.03,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "compare-three-destinations",
+      "name": "Three-way destination choice",
+      "description": "The visitor cycles through three destinations and compares them.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "COMPARE_VIEW"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "DESTINATION_COMPARISON",
+      "rationale": "Broad switching and comparison create a strong contextual-help opportunity.",
+      "category": "DESTINATION_COMPARISON",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "compare-three-destinations",
+        "name": "Three-way destination choice",
+        "expected": "ASSIST",
+        "predicted": "ASSIST",
+        "correct": true,
+        "reason": "Repeated destination switching plus comparison activity suggests an unresolved selection decision."
+      },
+      "ai": {
+        "id": "compare-three-destinations",
+        "name": "Three-way destination choice",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "DESTINATION_COMPARISON",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated switching and comparison suggest the destination choice remains unresolved."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.02
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "compare-bali-maldives-wait",
+      "name": "Early Bali Maldives comparison",
+      "description": "Two destinations and one compare action, but little repetition.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Comparison is explicit but evidence of unresolved need is limited.",
+      "category": "DESTINATION_COMPARISON",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "compare-bali-maldives-wait",
+        "name": "Early Bali Maldives comparison",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "compare-bali-maldives-wait",
+        "name": "Early Bali Maldives comparison",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "compare-resolved-dates",
+      "name": "Resolved comparison with dates",
+      "description": "Comparison is followed by a date search.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DATE_SEARCH"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Date selection indicates the comparison was likely resolved.",
+      "category": "FALSE_POSITIVE_TRAP",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "compare-resolved-dates",
+        "name": "Resolved comparison with dates",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "compare-resolved-dates",
+        "name": "Resolved comparison with dates",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "compare-resolved-booking",
+      "name": "Resolved comparison with booking",
+      "description": "A comparison is followed by booking progression.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Booking progression outweighs earlier comparison activity.",
+      "category": "FALSE_POSITIVE_TRAP",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "compare-resolved-booking",
+        "name": "Resolved comparison with booking",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "compare-resolved-booking",
+        "name": "Resolved comparison with booking",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.13,
+          0.02
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "compare-switch-after-compare",
+      "name": "Switching remains unresolved",
+      "description": "The visitor keeps switching after seeing comparison content.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "switzerland"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "DESTINATION_COMPARISON",
+      "rationale": "Post-comparison switching is strong evidence the decision remains open.",
+      "category": "DESTINATION_COMPARISON",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "compare-switch-after-compare",
+        "name": "Switching remains unresolved",
+        "expected": "ASSIST",
+        "predicted": "ASSIST",
+        "correct": true,
+        "reason": "Repeated destination switching plus comparison activity suggests an unresolved selection decision."
+      },
+      "ai": {
+        "id": "compare-switch-after-compare",
+        "name": "Switching remains unresolved",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "DESTINATION_COMPARISON",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated switching and comparison suggest the destination choice remains unresolved."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "package-two-wait",
+      "name": "Two packages, no price",
+      "description": "Two packages are viewed without pricing or comparison.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "There may be selection uncertainty, but evidence is weak.",
+      "category": "PACKAGE_SELECTION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "package-two-wait",
+        "name": "Two packages, no price",
+        "expected": "WAIT",
+        "predicted": "SILENT",
+        "correct": false,
+        "reason": "The current journey does not show meaningful friction or information-seeking behavior."
+      },
+      "ai": {
+        "id": "package-two-wait",
+        "name": "Two packages, no price",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The current context does not show meaningful unresolved friction."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "package-price-wait",
+      "name": "Early pricing exploration",
+      "description": "Pricing is inspected twice while exploring one package.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "HOTEL_VIEW",
+          "resort"
+        ],
+        [
+          "PRICE_VIEW"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Pricing activity alone does not establish enough friction.",
+      "category": "PACKAGE_SELECTION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "package-price-wait",
+        "name": "Early pricing exploration",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "package-price-wait",
+        "name": "Early pricing exploration",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "package-compare-assist",
+      "name": "Package comparison friction",
+      "description": "Pricing exploration culminates in comparison.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "HOTEL_VIEW",
+          "resort"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "COMPARE_VIEW"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "PACKAGE_SELECTION",
+      "rationale": "Repeated pricing plus comparison suggests package-selection uncertainty.",
+      "category": "PACKAGE_SELECTION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "package-compare-assist",
+        "name": "Package comparison friction",
+        "expected": "ASSIST",
+        "predicted": "ASSIST",
+        "correct": true,
+        "reason": "Repeated price/package exploration plus comparison activity suggests the visitor may benefit from contextual help."
+      },
+      "ai": {
+        "id": "package-compare-assist",
+        "name": "Package comparison friction",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "PACKAGE_SELECTION",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated pricing exploration plus comparison suggests uncertainty about package selection."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "package-progress-booking",
+      "name": "Package pricing then booking",
+      "description": "The visitor checks price and proceeds to booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Pricing supports a successful forward journey.",
+      "category": "PACKAGE_SELECTION",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "package-progress-booking",
+        "name": "Package pricing then booking",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "package-progress-booking",
+        "name": "Package pricing then booking",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "package-backtrack",
+      "name": "Package backtracking",
+      "description": "The visitor alternates between packages and price views without booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "island-rhythm"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "cities-seasons"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "island-rhythm"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "PACKAGE_SELECTION",
+      "rationale": "Backtracking across packages suggests unresolved selection.",
+      "category": "PACKAGE_SELECTION",
+      "labelConfidence": "MEDIUM",
+      "rule": {
+        "id": "package-backtrack",
+        "name": "Package backtracking",
+        "expected": "ASSIST",
+        "predicted": "WAIT",
+        "correct": false,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "package-backtrack",
+        "name": "Package backtracking",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "PACKAGE_SELECTION",
+        "labelConfidence": "MEDIUM",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "info-japan-visa",
+      "name": "Japan visa information",
+      "description": "Repeated entry-information seeking follows a Japan view.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "visa"
+        ],
+        [
+          "FAQ_SEARCH",
+          "visa"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "entry-requirements"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "TRAVEL_INFORMATION",
+      "rationale": "Explicit repeated information seeking is strong assistance evidence.",
+      "category": "INFORMATION_SEEKING",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "info-japan-visa",
+        "name": "Japan visa information",
+        "expected": "ASSIST",
+        "predicted": "ASSIST",
+        "correct": true,
+        "reason": "The visitor is repeatedly seeking travel information without clear forward progression."
+      },
+      "ai": {
+        "id": "info-japan-visa",
+        "name": "Japan visa information",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "TRAVEL_INFORMATION",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated information seeking suggests an unresolved question where contextual help may be valuable."
+        ],
+        "latenciesMs": [
+          0.02,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "info-japan-single",
+      "name": "Single travel-information visit",
+      "description": "The visitor opens travel information once.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "visa"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "A single information visit may be self-service and needs more evidence.",
+      "category": "INFORMATION_SEEKING",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "info-japan-single",
+        "name": "Single travel-information visit",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "info-japan-single",
+        "name": "Single travel-information visit",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The current context does not show meaningful unresolved friction."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "info-faq-resolved",
+      "name": "FAQ resolves question",
+      "description": "A travel-info view is followed by one FAQ and then dates.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "switzerland"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "rail"
+        ],
+        [
+          "FAQ_SEARCH",
+          "transfers"
+        ],
+        [
+          "DATE_SEARCH"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Information seeking appears resolved and the journey progresses.",
+      "category": "INFORMATION_SEEKING",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "info-faq-resolved",
+        "name": "FAQ resolves question",
+        "expected": "SILENT",
+        "predicted": "ASSIST",
+        "correct": false,
+        "reason": "The visitor is repeatedly seeking travel information without clear forward progression."
+      },
+      "ai": {
+        "id": "info-faq-resolved",
+        "name": "FAQ resolves question",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated information seeking suggests an unresolved question where contextual help may be valuable."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "info-repeated-faq",
+      "name": "Repeated entry FAQs",
+      "description": "Several entry questions are explored without booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "FAQ_SEARCH",
+          "visa"
+        ],
+        [
+          "FAQ_SEARCH",
+          "passport"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "entry-requirements"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "TRAVEL_INFORMATION",
+      "rationale": "Repeated explicit questions indicate unresolved information need.",
+      "category": "INFORMATION_SEEKING",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "info-repeated-faq",
+        "name": "Repeated entry FAQs",
+        "expected": "ASSIST",
+        "predicted": "ASSIST",
+        "correct": true,
+        "reason": "The visitor is repeatedly seeking travel information without clear forward progression."
+      },
+      "ai": {
+        "id": "info-repeated-faq",
+        "name": "Repeated entry FAQs",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "TRAVEL_INFORMATION",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "ASSIST",
+          "ASSIST"
+        ],
+        "decisionCounts": {
+          "ASSIST": 2
+        },
+        "reasons": [
+          "Repeated information seeking suggests an unresolved question where contextual help may be valuable."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "info-helpful-then-book",
+      "name": "Information then booking",
+      "description": "The visitor checks requirements and starts booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "entry"
+        ],
+        [
+          "FAQ_SEARCH",
+          "insurance"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Forward booking progression indicates independent resolution.",
+      "category": "INFORMATION_SEEKING",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "info-helpful-then-book",
+        "name": "Information then booking",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "info-helpful-then-book",
+        "name": "Information then booking",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "ambiguous-three-switches",
+      "name": "Three destination switches",
+      "description": "Switching is high but there is no explicit comparison.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Switching may be exploratory rather than friction; human label is medium confidence.",
+      "category": "AMBIGUOUS",
+      "labelConfidence": "MEDIUM",
+      "rule": {
+        "id": "ambiguous-three-switches",
+        "name": "Three destination switches",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "ambiguous-three-switches",
+        "name": "Three destination switches",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "MEDIUM",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "ambiguous-bali-maldives-switzerland",
+      "name": "Three destinations once each",
+      "description": "The visitor samples three destinations with no clear next step.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "switzerland"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Intent is unclear and there is insufficient evidence to interrupt.",
+      "category": "AMBIGUOUS",
+      "labelConfidence": "MEDIUM",
+      "rule": {
+        "id": "ambiguous-bali-maldives-switzerland",
+        "name": "Three destinations once each",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "ambiguous-bali-maldives-switzerland",
+        "name": "Three destinations once each",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "MEDIUM",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "ambiguous-price-single",
+      "name": "One price check",
+      "description": "One package price is checked after a destination view.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PRICE_VIEW"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "A normal evaluation step and a friction signal are indistinguishable here.",
+      "category": "AMBIGUOUS",
+      "labelConfidence": "LOW",
+      "rule": {
+        "id": "ambiguous-price-single",
+        "name": "One price check",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "ambiguous-price-single",
+        "name": "One price check",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "LOW",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The current context does not show meaningful unresolved friction."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "ambiguous-info-switch",
+      "name": "Information then destination switch",
+      "description": "Information seeking is followed by a destination change.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "visa"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "The switch could reflect resolved research or uncertainty.",
+      "category": "AMBIGUOUS",
+      "labelConfidence": "LOW",
+      "rule": {
+        "id": "ambiguous-info-switch",
+        "name": "Information then destination switch",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "ambiguous-info-switch",
+        "name": "Information then destination switch",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "LOW",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The current context does not show meaningful unresolved friction."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "disengage-after-assist",
+      "name": "Repeated activity then stop",
+      "description": "The visitor loops through destinations and stops without booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "COMPARE_VIEW"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "DESTINATION_COMPARISON",
+      "rationale": "Current unresolved friction warrants one evaluation opportunity; dismissal policy is future work.",
+      "category": "DISENGAGEMENT",
+      "labelConfidence": "MEDIUM",
+      "rule": {
+        "id": "disengage-after-assist",
+        "name": "Repeated activity then stop",
+        "expected": "ASSIST",
+        "predicted": "WAIT",
+        "correct": false,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "disengage-after-assist",
+        "name": "Repeated activity then stop",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "DESTINATION_COMPARISON",
+        "labelConfidence": "MEDIUM",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "disengage-low-signal",
+      "name": "Single destination exit",
+      "description": "The visitor views one destination and leaves.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "japan"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "There is no meaningful assistance signal.",
+      "category": "DISENGAGEMENT",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "disengage-low-signal",
+        "name": "Single destination exit",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "The current journey does not show meaningful friction or information-seeking behavior."
+      },
+      "ai": {
+        "id": "disengage-low-signal",
+        "name": "Single destination exit",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The current context does not show meaningful unresolved friction."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "disengage-after-package-loop",
+      "name": "Package loop then exit",
+      "description": "The visitor alternates packages and prices, then stops.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "island-rhythm"
+        ],
+        [
+          "PRICE_VIEW"
+        ]
+      ],
+      "expectedDecision": "WAIT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "Selection uncertainty exists, but the labelled evidence is not strong enough without comparison.",
+      "category": "DISENGAGEMENT",
+      "labelConfidence": "MEDIUM",
+      "rule": {
+        "id": "disengage-after-package-loop",
+        "name": "Package loop then exit",
+        "expected": "WAIT",
+        "predicted": "WAIT",
+        "correct": true,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "disengage-after-package-loop",
+        "name": "Package loop then exit",
+        "expected": "WAIT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "MEDIUM",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "trap-high-activity-booking",
+      "name": "High activity but booking",
+      "description": "Many exploration events culminate in booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ],
+        [
+          "PACKAGE_VIEW",
+          "barefoot-blue"
+        ],
+        [
+          "PRICE_VIEW"
+        ],
+        [
+          "TRAVEL_INFO_VIEW",
+          "visa"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "High activity is not friction when it ends in clear progression.",
+      "category": "FALSE_POSITIVE_TRAP",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "trap-high-activity-booking",
+        "name": "High activity but booking",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "trap-high-activity-booking",
+        "name": "High activity but booking",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "trap-compare-dates-booking",
+      "name": "Hero false-positive journey",
+      "description": "Bali, Maldives, comparison, selected dates, and booking.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "DATE_SEARCH"
+        ],
+        [
+          "BOOKING_START"
+        ]
+      ],
+      "expectedDecision": "SILENT",
+      "expectedAssistanceType": "NONE",
+      "rationale": "The comparison was resolved and the visitor is progressing toward booking.",
+      "category": "FALSE_POSITIVE_TRAP",
+      "labelConfidence": "HIGH",
+      "rule": {
+        "id": "trap-compare-dates-booking",
+        "name": "Hero false-positive journey",
+        "expected": "SILENT",
+        "predicted": "SILENT",
+        "correct": true,
+        "reason": "Forward progression outweighs earlier signs of uncertainty, so proactive assistance would add interruption cost."
+      },
+      "ai": {
+        "id": "trap-compare-dates-booking",
+        "name": "Hero false-positive journey",
+        "expected": "SILENT",
+        "expectedAssistanceType": "NONE",
+        "labelConfidence": "HIGH",
+        "decisions": [
+          "SILENT",
+          "SILENT"
+        ],
+        "decisionCounts": {
+          "SILENT": 2
+        },
+        "reasons": [
+          "The visitor is progressing toward booking, so interruption is unlikely to help."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    },
+    {
+      "id": "assist-explicit-compare",
+      "name": "Explicit comparison without loops",
+      "description": "The visitor explicitly compares two destinations and remains on comparison.",
+      "events": [
+        [
+          "DESTINATION_VIEW",
+          "bali"
+        ],
+        [
+          "DESTINATION_VIEW",
+          "maldives"
+        ],
+        [
+          "COMPARE_VIEW"
+        ],
+        [
+          "COMPARE_ADD",
+          "bali"
+        ],
+        [
+          "COMPARE_ADD",
+          "maldives"
+        ]
+      ],
+      "expectedDecision": "ASSIST",
+      "expectedAssistanceType": "DESTINATION_COMPARISON",
+      "rationale": "Explicit comparison without forward progress is a useful assistance opportunity.",
+      "category": "DESTINATION_COMPARISON",
+      "labelConfidence": "MEDIUM",
+      "rule": {
+        "id": "assist-explicit-compare",
+        "name": "Explicit comparison without loops",
+        "expected": "ASSIST",
+        "predicted": "WAIT",
+        "correct": false,
+        "reason": "There are early assistance signals, but not enough evidence to justify interrupting the visitor yet."
+      },
+      "ai": {
+        "id": "assist-explicit-compare",
+        "name": "Explicit comparison without loops",
+        "expected": "ASSIST",
+        "expectedAssistanceType": "DESTINATION_COMPARISON",
+        "labelConfidence": "MEDIUM",
+        "decisions": [
+          "WAIT",
+          "WAIT"
+        ],
+        "decisionCounts": {
+          "WAIT": 2
+        },
+        "reasons": [
+          "There are early signals, but the current context does not establish enough unresolved need to interrupt."
+        ],
+        "latenciesMs": [
+          0.01,
+          0.01
+        ],
+        "usages": []
+      }
+    }
+  ]
+}

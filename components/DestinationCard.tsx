@@ -1,0 +1,2 @@
+import Link from 'next/link'; import {Destination} from '@/lib/data';
+export default function DestinationCard({d}:{d:Destination}){return <article className="card"><div className="photo" style={{backgroundImage:`url(${d.image})`}}/><div className="cardBody"><div className="eyebrow">{d.country}</div><h3>{d.name}</h3><div className="muted">{d.tagline}</div><div className="tags">{d.vibe.map(x=><span className="tag" key={x}>{x}</span>)}</div><Link href={`/destinations/${d.slug}`}>Explore {d.name} →</Link></div></article>}
