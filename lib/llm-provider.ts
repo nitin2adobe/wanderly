@@ -1,5 +1,7 @@
-import type { AssistanceDecisionSchema } from './assistance-schema.ts';
+import { assistanceDecisions, assistanceTypes, type AssistanceDecisionSchema } from './assistance-schema.ts';
 import type { JourneyContext } from './journey-context.ts';
+
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export type LLMRequest = {
   systemInstruction: string;
@@ -25,7 +27,9 @@ export type ProviderSelection = {
 };
 
 const systemInstruction = `You decide whether proactive assistance would genuinely help an anonymous visitor during their current Wanderly session.
-Return only a JSON object matching the requested AssistanceDecision schema.
+The user message is a JourneyContext JSON object. Return only a JSON object with exactly these fields:
+{"decision": ${assistanceDecisions.map(d => `"${d}"`).join(' | ')}, "confidence": number between 0 and 1, "assistanceType": ${assistanceTypes.map(t => `"${t}"`).join(' | ')}, "headline": string, "reason": string, "evidence": string[]}
+assistanceType must be "NONE" unless decision is "ASSIST", and must name a specific type when decision is "ASSIST".
 Default to SILENT or WAIT when evidence is weak. Progression beats activity. Comparison alone does not justify intervention.
 Do not infer demographics, sensitive attributes, or facts absent from JourneyContext.
 The reason must be concise and explain observable evidence, never hidden chain-of-thought.`;
@@ -88,7 +92,7 @@ export class MockLLMProvider implements LLMProvider {
   }
 }
 
-class HttpLLMProvider implements LLMProvider {
+export class HttpLLMProvider implements LLMProvider {
   readonly name = 'http';
   readonly model: string;
   private readonly endpoint: string;
@@ -117,6 +121,7 @@ class HttpLLMProvider implements LLMProvider {
         context: request.context,
         responseFormat: 'json',
       }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`LLM provider returned HTTP ${response.status}.`);
     const body: unknown = await response.json();
@@ -128,7 +133,7 @@ class HttpLLMProvider implements LLMProvider {
   }
 }
 
-class OpenAIProvider implements LLMProvider {
+export class OpenAIProvider implements LLMProvider {
   readonly name = 'openai';
   readonly model: string;
   private readonly apiKey: string;
@@ -144,9 +149,11 @@ class OpenAIProvider implements LLMProvider {
   }
 
   async generateStructured(request: LLMRequest): Promise<AssistanceDecisionSchema> {
+    this.lastUsage = undefined;
     const response = await this.fetchImpl(this.endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       body: JSON.stringify({
         model: this.model,
         temperature: 0,

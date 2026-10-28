@@ -21,10 +21,15 @@ export function track(eventType:WanderlyEventType, page:string, entity?:string, 
   window.dispatchEvent(new CustomEvent(EVENT_UPDATED,{detail:event}));
   return event;
 }
-export function clearCurrentSession(){
+// The inspector runs in its own tab (own sessionStorage), so it follows the most recently active session.
+export function getLatestSessionId(){
+  const all=getEvents();
+  return all.length?all[all.length-1].sessionId:getSessionId();
+}
+export function clearCurrentSession(targetSid?:string){
   if(typeof window==='undefined') return;
-  const sid=getSessionId();
+  const sid=targetSid||getSessionId();
   localStorage.setItem(EVENT_STORAGE_KEY,JSON.stringify(getEvents().filter(e=>e.sessionId!==sid)));
-  sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  if(sessionStorage.getItem(SESSION_STORAGE_KEY)===sid) sessionStorage.removeItem(SESSION_STORAGE_KEY);
   window.dispatchEvent(new Event(EVENT_UPDATED));
 }

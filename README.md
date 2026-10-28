@@ -15,17 +15,19 @@ A fictional premium travel marketplace for the Adaptive Assistance Agent POC.
 - `/booking`
 
 ## Run locally
-This environment could not install npm dependencies, so install them on your development machine:
+Requires Node 22.6+.
 
 ```bash
 npm install
 npm run dev
+npm test
+npm run typecheck
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Step 3 decisioning and the AI reasoner are documented in [STEP3.md](STEP3.md).
 
 ## Step 1 scope
-This version intentionally contains no journey instrumentation, agent decisioning, or chat. Those are Steps 2–6 of the POC.
+Step 1 was UI only; instrumentation (Step 2) and assistance decisioning (Step 3) were added later. There is still no customer-facing chat or assistance UI.
 
 ## Image note
 The prototype uses remote travel imagery in `lib/data.ts`. Replace those URLs with approved/local assets before any external distribution.

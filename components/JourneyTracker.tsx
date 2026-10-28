@@ -6,9 +6,8 @@ import { getEvents, getSessionId, track } from '@/lib/tracking';
 function semantic(path:string){
   if(path.startsWith('/destinations/')) return {type:'DESTINATION_VIEW' as const,entity:path.split('/')[2]};
   if(path==='/compare') return {type:'COMPARE_VIEW' as const};
-  if(path==='/packages') return {type:'PACKAGE_VIEW' as const, entity:'packages'};
+  if(path==='/packages') return {type:'PRICE_VIEW' as const};
   if(path==='/travel-info') return {type:'TRAVEL_INFO_VIEW' as const};
-  if(path==='/booking') return {type:'BOOKING_START' as const};
   return null;
 }
 export default function JourneyTracker(){

@@ -9,6 +9,7 @@ const context: JourneyContext = {
   destinationsViewed: ['Bali', 'Maldives'],
   packagesViewed: [],
   destinationSwitches: 1,
+  packageSwitches: 0,
   destinationSwitching: 'MEDIUM',
   comparisonActivity: 'MEDIUM',
   pricingExploration: 'NONE',

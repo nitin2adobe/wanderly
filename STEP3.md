@@ -17,8 +17,14 @@ The server-side `POST /api/assistance/reason` endpoint accepts only the canonica
 returns validated `AssistanceDecision` data plus safe provider metadata.
 
 By default, or when live configuration is incomplete, the endpoint uses the
-clearly labelled deterministic `MockLLMProvider`. A live provider can be
-configured with:
+clearly labelled deterministic `MockLLMProvider`. A live provider can be configured with either of the following (see `.env.example`):
+
+```text
+WANDERLY_LLM_PROVIDER=openai
+OPENAI_API_KEY=...
+OPENAI_MODEL=approved-model
+OPENAI_BASE_URL=https://api.openai.com/v1   # optional
+```
 
 ```text
 WANDERLY_LLM_PROVIDER=http
@@ -28,13 +34,18 @@ WANDERLY_LLM_MODEL=approved-model
 ```
 
 The API key and endpoint remain server-side. The browser receives only
-`provider.name`, `provider.model`, `mode`, and the validated decision. No final
+`provider.name`, `provider.model`, `mode`, and the validated decision; provider
+error details are logged server-side and never returned. Provider calls time out
+after 15 seconds, request bodies are capped at 8 KB, and the endpoint is
+rate-limited per client (30 requests/minute, in-memory per instance). The
+system instruction includes the output schema, and decisions are rejected unless
+`assistanceType` is `NONE` for SILENT/WAIT and specific for ASSIST. No final
 execution policy is present yet.
 
 ## Phase C — Real-model journey evaluation
 
 The reusable labelled dataset lives in `lib/labelled-journeys.ts` and contains
-31 human-authored cases across healthy progression, destination comparison,
+37 human-authored cases (the six `holdout-*` cases were added after rule tuning and are reported separately) across healthy progression, destination comparison,
 package selection, information seeking, ambiguity, false-positive traps, and
 disengagement. Labels are independent of both the rule baseline and model.
 
@@ -50,9 +61,9 @@ For an explicit live run, configure `.env.local` from `.env.example` and use:
 npm run evaluate:assistance -- --live --runs=3
 ```
 
-The harness reports accuracy, ASSIST precision/recall, unnecessary interruption
+The harness reports accuracy, ASSIST precision/recall, ASSIST type accuracy, unnecessary interruption
 and missed-assistance rates, WAIT/SILENT accuracy, confusion matrices,
-disagreements, stability, and AI latency (average/P50/P95). Results are written
+disagreements, stability, and AI latency (average/P50/P95). Mock runs are labelled as a deterministic stand-in, not a real model. Results are written
 to `evaluation/results/latest.json`; credentials are never stored. OpenAI token
 usage is recorded when the provider returns it, otherwise it is `null`.
 
@@ -82,10 +93,23 @@ The hackathon hypothesis is that agentic reasoning can make better intervention 
 Phase A now includes executable tests for all six journeys in
 `lib/assistance-decision.test.ts`. The visible prototype instruments route
 views, comparison actions, travel-information selection/FAQ actions, date
-searches, and booking steps. There is no separate hotel-selection or booking
-completion screen yet, so those event types remain available for future UI work
-and are represented directly in the acceptance tests.
+searches, package clicks (`PACKAGE_VIEW` + `PRICE_VIEW` per package), the
+packages page (`PRICE_VIEW`), and booking. Opening `/booking` is not progression;
+the first form interaction emits `BOOKING_START`, later ones `BOOKING_STEP`. A
+`DATE_SEARCH` counts as forward progression. There is no hotel-selection or
+booking-completion screen yet, so `HOTEL_VIEW` and `BOOKING_COMPLETE` remain
+available for future UI work and are covered directly in tests.
+
+## Known baseline limits
+
+The rule baseline is tuned to the 31 original cases (100% there) and scores lower on the
+six holdout cases (83.3%). The known miss is `holdout-compare-add-remove`: add/remove
+actions all count as comparison activity, so backing out of a comparison can still ASSIST.
+The mock provider is a deliberately weaker stand-in and is not a measure of a real model.
 
 ## Next Step 3 increment
 
-Add an LLM reasoner behind the same structured DecisionResult contract and show baseline vs AI decisions side-by-side in /agent. The policy/guardrail layer remains deterministic.
+Run a live evaluation (`--live`) to compare a real model with the baseline,
+then build the deterministic execution policy (confidence threshold, cooldown,
+dismissal, budget) and the customer-facing assistance UI that emits the
+`ASSISTANCE_*` events.

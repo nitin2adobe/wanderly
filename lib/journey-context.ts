@@ -9,6 +9,7 @@ export type JourneyContext = {
   destinationsViewed: string[];
   packagesViewed: string[];
   destinationSwitches: number;
+  packageSwitches: number;
   destinationSwitching: SignalLevel;
   comparisonActivity: SignalLevel;
   pricingExploration: SignalLevel;
@@ -32,6 +33,9 @@ export function buildJourneyContext(events: WanderlyEvent[]): JourneyContext {
 
   let switches = 0;
   for(let i=1;i<destinationEvents.length;i++) if(destinationEvents[i-1].entity!==destinationEvents[i].entity) switches++;
+  const packageEvents = semantic.filter(e=>e.eventType==='PACKAGE_VIEW'&&e.entity);
+  let packageSwitches = 0;
+  for(let i=1;i<packageEvents.length;i++) if(packageEvents[i-1].entity!==packageEvents[i].entity) packageSwitches++;
 
   const compareCount = semantic.filter(e=>['COMPARE_ADD','COMPARE_VIEW','COMPARE_REMOVE'].includes(e.eventType)).length;
   const priceCount = semantic.filter(e=>e.eventType==='PRICE_VIEW').length;
@@ -40,7 +44,7 @@ export function buildJourneyContext(events: WanderlyEvent[]): JourneyContext {
 
   const lastTypes = semantic.slice(-4).map(e=>e.eventType);
   let journeyProgression: Progression = 'NEUTRAL';
-  if(lastTypes.some(t=>['BOOKING_START','BOOKING_STEP','BOOKING_COMPLETE'].includes(t))) journeyProgression='POSITIVE';
+  if(lastTypes.some(t=>['BOOKING_START','BOOKING_STEP','BOOKING_COMPLETE','DATE_SEARCH'].includes(t))) journeyProgression='POSITIVE';
   else if(switches >= 3 && compareCount===0) journeyProgression='NEGATIVE';
   else if(compareCount>0 && destinationEvents.length>0) {
     const lastCompare = semantic.map(e=>e.eventType).lastIndexOf('COMPARE_VIEW');
@@ -59,6 +63,7 @@ export function buildJourneyContext(events: WanderlyEvent[]): JourneyContext {
     destinationsViewed,
     packagesViewed,
     destinationSwitches:switches,
+    packageSwitches,
     destinationSwitching: level(switches,1,3),
     comparisonActivity: level(compareCount,1,2),
     pricingExploration: level(priceCount,1,2),

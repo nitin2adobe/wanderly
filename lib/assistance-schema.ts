@@ -19,7 +19,7 @@ export function validateJourneyContext(value: unknown): ValidationResult<Journey
   for (const key of ['destinationsViewed', 'packagesViewed', 'recentJourney'] as const) {
     if (!Array.isArray(c[key]) || c[key].some(item => typeof item !== 'string')) errors.push(`${key} must be a string array.`);
   }
-  for (const key of ['destinationSwitches', 'semanticEventCount'] as const) {
+  for (const key of ['destinationSwitches', 'packageSwitches', 'semanticEventCount'] as const) {
     if (!Number.isInteger(c[key]) || (c[key] as number) < 0) errors.push(`${key} must be a non-negative integer.`);
   }
   for (const key of ['destinationSwitching', 'comparisonActivity', 'pricingExploration', 'informationSeeking', 'bookingProgression'] as const) {
@@ -48,5 +48,9 @@ export function validateAssistanceDecision(value: unknown): ValidationResult<Ass
   if (!isOneOf(d.assistanceType, assistanceTypes)) errors.push('assistanceType must be a known assistance type.');
   for (const key of ['headline', 'reason'] as const) if (typeof d[key] !== 'string' || !d[key]?.trim()) errors.push(`${key} must be a non-empty string.`);
   if (!Array.isArray(d.evidence) || d.evidence.some(item => typeof item !== 'string' || !item.trim())) errors.push('evidence must be a string array.');
+  if (!errors.length) {
+    if (d.decision === 'ASSIST' && d.assistanceType === 'NONE') errors.push('ASSIST requires a specific assistanceType.');
+    if (d.decision !== 'ASSIST' && d.assistanceType !== 'NONE') errors.push('assistanceType must be NONE unless decision is ASSIST.');
+  }
   return errors.length ? { valid: false, errors } : { valid: true, value: d as AssistanceDecisionSchema };
 }

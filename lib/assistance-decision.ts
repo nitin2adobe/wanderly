@@ -48,9 +48,12 @@ export function decideAssistance(c: JourneyContext): DecisionResult {
     };
   }
 
-  // Strong unresolved destination comparison.
-  if (c.potentialFriction === 'DESTINATION_SELECTION' && c.destinationSwitches >= 3 && rank[c.comparisonActivity] >= 1) {
-    evidence.push(`${c.destinationSwitches} destination switches detected.`);
+  // Strong unresolved destination comparison: repeated switching, or heavy comparison activity.
+  if (
+    c.potentialFriction === 'DESTINATION_SELECTION' && rank[c.comparisonActivity] >= 1 &&
+    (c.destinationSwitches >= 2 || c.comparisonActivity === 'HIGH')
+  ) {
+    evidence.push(c.destinationSwitches >= 2 ? `${c.destinationSwitches} destination switches detected.` : 'Repeated comparison actions detected.');
     evidence.push('The visitor used comparison content but has not progressed to booking.');
     return {
       decision: 'ASSIST', confidence: 0.88, assistanceType: 'DESTINATION_COMPARISON',
@@ -60,14 +63,17 @@ export function decideAssistance(c: JourneyContext): DecisionResult {
     };
   }
 
-  // Strong package/pricing exploration.
-  if (c.potentialFriction === 'PACKAGE_SELECTION' && rank[c.pricingExploration] >= 2 && rank[c.comparisonActivity] >= 1) {
+  // Strong package/pricing exploration: comparison activity, or backtracking between packages.
+  if (
+    c.potentialFriction === 'PACKAGE_SELECTION' && rank[c.pricingExploration] >= 2 &&
+    (rank[c.comparisonActivity] >= 1 || c.packageSwitches >= 2)
+  ) {
     evidence.push('Repeated pricing exploration detected.');
-    evidence.push('The visitor also used comparison content without booking progression.');
+    evidence.push(rank[c.comparisonActivity] >= 1 ? 'The visitor also used comparison content without booking progression.' : 'The visitor is backtracking between packages without booking progression.');
     return {
       decision: 'ASSIST', confidence: 0.84, assistanceType: 'PACKAGE_SELECTION',
       headline: 'Offer package-selection help',
-      reason: 'Repeated price/package exploration plus comparison activity suggests the visitor may benefit from contextual help.',
+      reason: 'Repeated price/package exploration plus comparison or package backtracking suggests the visitor may benefit from contextual help.',
       evidence
     };
   }
@@ -75,6 +81,7 @@ export function decideAssistance(c: JourneyContext): DecisionResult {
   // Early signals should not immediately create a popup. Wait for more evidence.
   if (
     c.potentialFriction !== 'NONE' ||
+    c.packagesViewed.length >= 1 ||
     rank[c.destinationSwitching] >= 1 ||
     rank[c.comparisonActivity] >= 1 ||
     rank[c.pricingExploration] >= 1 ||

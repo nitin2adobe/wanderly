@@ -12,6 +12,8 @@ export type Outcome = {
   expected: LabelledJourney['expectedDecision'];
   predicted: LabelledJourney['expectedDecision'];
   correct: boolean;
+  expectedType?: string;
+  predictedType?: string;
 };
 
 export type Metrics = {
@@ -23,6 +25,7 @@ export type Metrics = {
   missedAssistanceRate: number;
   waitAccuracy: number;
   silentAccuracy: number;
+  assistTypeAccuracy: number;
   confusionMatrix: Record<string, Record<string, number>>;
 };
 
@@ -49,6 +52,7 @@ export function calculateMetrics(outcomes: Outcome[]): Metrics {
     missedAssistanceRate: rate(count(o => o.predicted === 'SILENT' && o.expected === 'ASSIST'), expectedAssist),
     waitAccuracy: rate(count(o => o.predicted === 'WAIT' && o.expected === 'WAIT'), expectedWait),
     silentAccuracy: rate(count(o => o.predicted === 'SILENT' && o.expected === 'SILENT'), expectedSilent),
+    assistTypeAccuracy: rate(count(o => o.predicted === 'ASSIST' && o.expected === 'ASSIST' && o.predictedType === o.expectedType), count(o => o.predicted === 'ASSIST' && o.expected === 'ASSIST')),
     confusionMatrix: matrix,
   };
 }
@@ -94,6 +98,7 @@ async function evaluateModel(selection: ProviderSelection, runs: number) {
       expectedAssistanceType: journey.expectedAssistanceType,
       labelConfidence: journey.labelConfidence,
       decisions: decisions.map(decision => decision.decision),
+      assistanceTypes: decisions.map(decision => decision.assistanceType),
       decisionCounts: counts,
       reasons: [...new Set(decisions.map(decision => decision.reason))],
       latenciesMs: journeyLatencies,
@@ -103,14 +108,14 @@ async function evaluateModel(selection: ProviderSelection, runs: number) {
   return { results, latencies };
 }
 
-function metricsForResults(results: Array<{ expected: Outcome['expected']; decisions: string[] }>): Metrics {
-  return calculateMetrics(results.map(result => ({ expected: result.expected, predicted: result.decisions[0] as Outcome['predicted'], correct: result.decisions[0] === result.expected })));
+function metricsForResults(results: Array<{ expected: Outcome['expected']; decisions: string[]; expectedAssistanceType?: string; assistanceTypes: string[] }>): Metrics {
+  return calculateMetrics(results.map(result => ({ expected: result.expected, predicted: result.decisions[0] as Outcome['predicted'], correct: result.decisions[0] === result.expected, expectedType: result.expectedAssistanceType, predictedType: result.assistanceTypes[0] })));
 }
 
 function printModelReport(label: string, metrics: Metrics) {
   console.log(`\n${label}`);
   console.log(`Accuracy ${(metrics.accuracy * 100).toFixed(1)}% | ASSIST precision ${(metrics.assistPrecision * 100).toFixed(1)}% | ASSIST recall ${(metrics.assistRecall * 100).toFixed(1)}%`);
-  console.log(`Unnecessary interruption ${(metrics.unnecessaryInterruptionRate * 100).toFixed(1)}% | Missed assistance ${(metrics.missedAssistanceRate * 100).toFixed(1)}% | WAIT accuracy ${(metrics.waitAccuracy * 100).toFixed(1)}% | SILENT accuracy ${(metrics.silentAccuracy * 100).toFixed(1)}%`);
+  console.log(`Unnecessary interruption ${(metrics.unnecessaryInterruptionRate * 100).toFixed(1)}% | Missed assistance ${(metrics.missedAssistanceRate * 100).toFixed(1)}% | WAIT accuracy ${(metrics.waitAccuracy * 100).toFixed(1)}% | SILENT accuracy ${(metrics.silentAccuracy * 100).toFixed(1)}% | ASSIST type accuracy ${(metrics.assistTypeAccuracy * 100).toFixed(1)}%`);
   console.log('Confusion matrix (expected -> predicted):', JSON.stringify(metrics.confusionMatrix));
 }
 
@@ -121,13 +126,15 @@ async function main() {
   console.log(`Evaluating ${labelledJourneys.length} labelled journeys for ${runs} run(s) with ${selection.provider.name}/${selection.provider.model} (${selection.mode}).`);
   const ruleResults = labelledJourneys.map((journey, index) => {
     const decision = decideAssistance(buildJourneyContext(journeyEvents(journey.events, index)));
-    return { id: journey.id, name: journey.name, expected: journey.expectedDecision, predicted: decision.decision, correct: decision.decision === journey.expectedDecision, reason: decision.reason };
+    return { id: journey.id, name: journey.name, expected: journey.expectedDecision, predicted: decision.decision, correct: decision.decision === journey.expectedDecision, reason: decision.reason, expectedType: journey.expectedAssistanceType, predictedType: decision.assistanceType };
   });
   const ai = await evaluateModel(selection, runs);
   const ruleMetrics = calculateMetrics(ruleResults);
   const aiMetrics = metricsForResults(ai.results);
   printModelReport('RULE BASELINE', ruleMetrics);
-  printModelReport('AI REASONER (first run)', aiMetrics);
+  const holdout = ruleResults.filter(result => result.id.startsWith('holdout-'));
+  printModelReport(`RULE BASELINE (holdout only, ${holdout.length} journeys)`, calculateMetrics(holdout));
+  printModelReport(selection.mode === 'mock' ? 'MOCK PROVIDER (deterministic stand-in, not a real model; first run)' : 'AI REASONER (first run)', aiMetrics);
 
   console.log('\nDISAGREEMENTS');
   for (const journey of labelledJourneys) {
@@ -147,14 +154,15 @@ async function main() {
   }
   const timestamp = new Date().toISOString();
   const allLatencies = ai.latencies;
+  const stability = ai.results.filter(result => Object.keys(result.decisionCounts).length === 1).length / (ai.results.length || 1);
   const report = {
     timestamp,
     provider: selection.provider.name,
     model: selection.provider.model,
     mode: selection.mode,
-    datasetVersion: 'phase-c-v1',
+    datasetVersion: 'phase-c-v2',
     runs,
-    summary: { rules: ruleMetrics, ai: aiMetrics },
+    summary: { rules: ruleMetrics, ai: aiMetrics, aiStability: stability },
     latencyMs: { average: allLatencies.reduce((sum, value) => sum + value, 0) / (allLatencies.length || 1), p50: percentile(allLatencies, 0.5), p95: percentile(allLatencies, 0.95) },
     tokenUsage: ai.results.flatMap(result => result.usages || []).length ? ai.results.flatMap(result => result.usages || []) : null,
     journeys: labelledJourneys.map(journey => ({
