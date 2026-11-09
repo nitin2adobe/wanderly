@@ -134,6 +134,23 @@ events -> JourneyContext -> proposal (rules or AI) -> policy gate -> balloon -> 
 - `lib/concierge-connector.ts` — the integration boundary. A brand implements `open(handoff)`; the plugin never depends on how the
   concierge renders. The handoff is versioned (`version: 1`); the bundled demo connector opens the mock panel.
 - `/demo` — one-click scenario replay (right moment, right restraint, respectful adaptation) plus a reset button.
+- `/demo/live` — split view: the customer site in an iframe (running a scenario via `/demo?run=<id>`) beside the live activation trace.
+- Demo polish: "Why am I seeing this?" on the balloon (shows the observed signals), a typing pause and destination cards with images
+  in the concierge panel.
+- Presenter mode (`?present=1` or the toggle on `/demo`, `/demo/live`): hides the Next dev badge and enlarges balloon, panel and trace.
+  Under 600px the balloon and panel become bottom sheets with 44px tap targets.
+- Signal timeline (`lib/signal-timeline.ts`): the decision and policy result after each visitor event, with flips marked.
+- Policy what-if controls (`lib/policy-settings.ts`, `/demo/live`): confidence threshold, cooldown and invitation budget; values are
+  clamped so the gate cannot be disabled, and they apply to the embedded site immediately.
+- Brand switcher (`lib/brand-config.ts`, `/demo/electronics`): a fixture electronics storefront runs through `electronicsAdapter` into the
+  same engine, with brand-specific concierge labels, data and copy (no travel wording leaks, covered by tests).
+- Session memory (`lib/assistance-memory.ts`) closes the loop: the plugin's own outcomes now change later behaviour.
+  Each visitor dismissal doubles the cooldown, a second dismissal stops invitations for the session (`REPEATED_DISMISSALS`),
+  and a priority the visitor stated in the concierge is carried into the next invitation's handoff so the concierge answers directly
+  instead of re-asking. Plugin withdrawals do not count as dismissals. The trace shows "Session memory".
+- Rules vs AI (`components/RulesVsAI.tsx`): both proposals for the same journey with source badge, latency and an agree/disagree count.
+  One AI call per distinct journey state (cached). With no credentials the AI side is the labelled mock provider; an AI outage is
+  shown as "unavailable", never as agreement. Re-check with a real model after the live evaluation.
 - `lib/brand-adapters.ts` — `BrandAdapter` contract mapping a brand's own events to the engine's signals, with an
   **electronics fixture** (`lib/brand-adapters.test.ts`) replayed through the same decision, policy and handoff code.
   This is a fixture, not a validated integration; intent names such as `DESTINATION_COMPARISON` are still travel-flavoured.

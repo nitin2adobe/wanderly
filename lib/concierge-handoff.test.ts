@@ -32,6 +32,24 @@ test('travel-information handoffs use viewed destinations', () => {
   assert.deepEqual(handoff.entities, ['Japan']);
 });
 
+test('a remembered preference is carried into the handoff and noted by the concierge', () => {
+  const c = context(comparison);
+  const h = buildHandoff(c, decideAssistance(c), 's', new Date(), 'wanderly', { priority: 'BUDGET' });
+  assert.deepEqual(h.explicitPreferences, { priority: 'BUDGET' });
+  assert.equal(validateHandoff(h).valid, true);
+});
+
+test('over-long entities and signals are rejected by the validator and truncated by the builder', () => {
+  const c = context(comparison);
+  const long = 'x'.repeat(500);
+  const d = { ...decideAssistance(c), evidence: [long] };
+  const h = buildHandoff(c, d, 's');
+  assert.equal(h.observedSignals[0].length, 240);
+  assert.equal(validateHandoff(h).valid, true);
+  assert.equal(validateHandoff({ ...h, entities: [long] }).valid, false);
+  assert.equal(validateHandoff({ ...h, observedSignals: [long] }).valid, false);
+});
+
 test('refuses to build a handoff for SILENT and WAIT decisions', () => {
   const silent = context([['DESTINATION_VIEW', 'maldives'], ['DATE_SEARCH'], ['BOOKING_START']]);
   const wait = context([['DESTINATION_VIEW', 'maldives'], ['PACKAGE_VIEW', 'maldives']]);

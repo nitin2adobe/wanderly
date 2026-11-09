@@ -1,10 +1,13 @@
 import type { AssistanceType, DecisionResult } from './assistance-decision.ts';
+import { deriveMemory } from './assistance-memory.ts';
 import type { WanderlyEvent } from './events.ts';
 import type { JourneyContext } from './journey-context.ts';
 
+const MAX_VISITOR_DISMISSALS = 2;
+
 export type PolicyRule =
   | 'NOT_ASSIST' | 'LOW_CONFIDENCE' | 'FORWARD_PROGRESS' | 'INVITATION_PENDING'
-  | 'TYPE_ALREADY_HANDLED' | 'COOLDOWN' | 'SESSION_BUDGET' | 'ALLOWED';
+  | 'REPEATED_DISMISSALS' | 'TYPE_ALREADY_HANDLED' | 'COOLDOWN' | 'SESSION_BUDGET' | 'ALLOWED';
 
 export type PolicyResult = { allowed: boolean; rule: PolicyRule; reason: string };
 
@@ -26,6 +29,11 @@ export function hasPendingInvitation(sessionEvents: WanderlyEvent[]): boolean {
   return last?.eventType === 'ASSISTANCE_SHOWN';
 }
 
+/** True when the visitor is already progressing toward booking, regardless of who proposed the invitation. */
+export function isForwardProgress(context: JourneyContext): boolean {
+  return context.journeyProgression === 'POSITIVE' || context.bookingProgression !== 'NONE';
+}
+
 /**
  * Deterministic gate between a model/rule proposal and anything the visitor sees.
  * `sessionEvents` must contain only the current session's events, oldest first.
@@ -45,7 +53,7 @@ export function evaluatePolicy(
   if (decision.confidence < options.minConfidence) {
     return block('LOW_CONFIDENCE', `Confidence ${decision.confidence} is below the ${options.minConfidence} threshold.`);
   }
-  if (context.journeyProgression === 'POSITIVE' || context.bookingProgression !== 'NONE') {
+  if (isForwardProgress(context)) {
     return block('FORWARD_PROGRESS', 'The visitor is progressing toward booking; do not interrupt.');
   }
 
@@ -53,14 +61,21 @@ export function evaluatePolicy(
   if (hasPendingInvitation(sessionEvents)) {
     return block('INVITATION_PENDING', 'An invitation is already visible.');
   }
+  // The plugin adapts to what the visitor has told it: repeated "not now" means stop, not retry later.
+  const { visitorDismissals } = deriveMemory(sessionEvents);
+  if (visitorDismissals >= MAX_VISITOR_DISMISSALS) {
+    return block('REPEATED_DISMISSALS', `The visitor dismissed ${visitorDismissals} invitations; no further invitations this session.`);
+  }
   if (history.some(e => e.eventType !== 'ASSISTANCE_SHOWN' && typeOf(e) === decision.assistanceType)) {
     return block('TYPE_ALREADY_HANDLED', `The visitor already responded to ${decision.assistanceType} assistance this session.`);
   }
   const lastDismissal = history.filter(e => e.eventType === 'ASSISTANCE_DISMISSED').at(-1);
   if (lastDismissal) {
+    // Each visitor dismissal doubles the wait before the next invitation.
+    const cooldownMs = options.cooldownMs * 2 ** Math.max(0, visitorDismissals - 1);
     const elapsed = now.getTime() - Date.parse(lastDismissal.timestamp);
-    if (elapsed < options.cooldownMs) {
-      return block('COOLDOWN', `Cooling down after a dismissal (${Math.ceil((options.cooldownMs - elapsed) / 1000)}s remaining).`);
+    if (elapsed < cooldownMs) {
+      return block('COOLDOWN', `Cooling down after a dismissal (${Math.ceil((cooldownMs - elapsed) / 1000)}s remaining).`);
     }
   }
   if (history.filter(e => e.eventType === 'ASSISTANCE_SHOWN').length >= options.maxInvitationsPerSession) {

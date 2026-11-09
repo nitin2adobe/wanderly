@@ -1,20 +1,26 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { decideAssistance } from '@/lib/assistance-decision';
 import { assistanceCopy } from '@/lib/assistance-copy';
-import { evaluatePolicy, hasPendingInvitation } from '@/lib/assistance-policy';
+import { evaluatePolicy, hasPendingInvitation, isForwardProgress } from '@/lib/assistance-policy';
 import { buildHandoff, validateHandoff, type ConciergeHandoff } from '@/lib/concierge-handoff';
 import { EVENT_UPDATED } from '@/lib/events';
 import { buildJourneyContext } from '@/lib/journey-context';
 import { getActivationMode, ACTIVATION_MODE_CHANGED } from '@/lib/activation-mode';
 import { proposeAssistance } from '@/lib/activation-proposal';
+import { getPolicyOptions, POLICY_SETTINGS_CHANGED } from '@/lib/policy-settings';
+import { brandIdForPath, getBrandConfig } from '@/lib/brand-config';
+import { deriveMemory } from '@/lib/assistance-memory';
 import { getEvents, getSessionId, track } from '@/lib/tracking';
 import MockConciergePanel from './MockConciergePanel';
 import { CONCIERGE_OPEN_EVENT, demoConnector, type ConciergeConnector } from '@/lib/concierge-connector';
 
 const EVALUATION_DELAY_MS = 1200;
-const HIDDEN_ROUTES = ['/agent', '/booking', '/demo'];
+const HIDDEN_ROUTES = ['/agent', '/booking'];
+// Demo control pages host the site in an iframe, so the plugin runs inside the frame instead.
+const HIDDEN_EXACT = ['/demo', '/demo/live'];
+const isHiddenRoute = (pathname: string | null) =>
+  !!pathname && (HIDDEN_EXACT.includes(pathname) || HIDDEN_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`)));
 
 function sessionEvents() {
   const sid = getSessionId();
@@ -30,16 +36,18 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
   invitationRef.current = invitation;
 
   const evaluate = useCallback(async () => {
+    // Never create (or count) an invitation the visitor cannot see.
+    if (isHiddenRoute(window.location.pathname)) return;
     const { sid, events } = sessionEvents();
     if (!sid) return;
     const pending = hasPendingInvitation(events);
     const current = invitationRef.current;
 
     if (current) {
-      // The invitation is stale if the session was reset or the journey no longer warrants it.
-      const still = decideAssistance(buildJourneyContext(events));
+      // Withdraw on forward progress or a reset session. This check is source-independent: an invitation proposed by
+      // the AI must not be judged against the rules' decision.
       if (!pending) setInvitation(null);
-      else if (still.decision !== 'ASSIST' || still.assistanceType !== current.intent) {
+      else if (isForwardProgress(buildJourneyContext(events))) {
         track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: current.intent, reason: 'withdrawn' });
         setInvitation(null);
       }
@@ -61,9 +69,10 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
     // The journey may have moved on while the reasoner was thinking; a newer evaluation is already scheduled.
     const latest = sessionEvents();
     if (JSON.stringify(buildJourneyContext(latest.events)) !== JSON.stringify(context) || invitationRef.current || hasPendingInvitation(latest.events)) return;
-    const policy = evaluatePolicy(decision, context, latest.events, new Date());
+    const policy = evaluatePolicy(decision, context, latest.events, new Date(), getPolicyOptions());
     if (!policy.allowed) return;
-    const handoff = buildHandoff(context, decision, sid);
+    const memory = deriveMemory(latest.events);
+    const handoff = buildHandoff(context, decision, sid, new Date(), brandIdForPath(window.location.pathname), memory.preferredPriority ? { priority: memory.preferredPriority } : {});
     track('ASSISTANCE_SHOWN', window.location.pathname, undefined, { assistanceType: handoff.intent, handoff, source });
     setInvitation(handoff);
   }, []);
@@ -77,11 +86,13 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
     window.addEventListener(EVENT_UPDATED, schedule);
     window.addEventListener('storage', schedule);
     window.addEventListener(ACTIVATION_MODE_CHANGED, schedule);
+    window.addEventListener(POLICY_SETTINGS_CHANGED, schedule);
     return () => {
       clearTimeout(timer.current);
       window.removeEventListener(EVENT_UPDATED, schedule);
       window.removeEventListener('storage', schedule);
       window.removeEventListener(ACTIVATION_MODE_CHANGED, schedule);
+      window.removeEventListener(POLICY_SETTINGS_CHANGED, schedule);
     };
   }, [evaluate]);
 
@@ -97,7 +108,8 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const current = invitationRef.current;
-      if (event.key !== 'Escape' || !current) return;
+      // Escape must not silently dismiss an invitation that is hidden on this route.
+      if (event.key !== 'Escape' || !current || isHiddenRoute(window.location.pathname)) return;
       track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: current.intent, reason: 'visitor' });
       setInvitation(null);
     };
@@ -105,7 +117,7 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  if (HIDDEN_ROUTES.some(route => pathname === route || pathname?.startsWith(`${route}/`))) return null;
+  if (isHiddenRoute(pathname)) return null;
 
   const accept = () => {
     if (!invitation) return;
@@ -119,14 +131,21 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
     setInvitation(null);
   };
 
-  const copy = invitation ? assistanceCopy(invitation.intent, invitation.entities) : null;
+  const brand = invitation ? getBrandConfig(invitation.brand) : undefined;
+  const copy = invitation ? assistanceCopy(invitation.intent, invitation.entities, brand) : null;
   return (
     <>
       {invitation && copy && (
         <div className="conciergeBalloon" role="dialog" aria-label="Concierge suggestion">
-          <div className="conciergeBalloonHead"><span className="conciergeAvatar" aria-hidden="true">W</span><strong>Wanderly concierge</strong></div>
+          <div className="conciergeBalloonHead"><span className="conciergeAvatar" aria-hidden="true">{(brand?.displayName ?? 'B').charAt(0)}</span><strong>{brand?.displayName ?? 'Brand'} concierge</strong></div>
           <h3>{copy.headline}</h3>
           <p>{copy.body}</p>
+          {invitation.observedSignals.length > 0 && (
+            <details className="conciergeWhy">
+              <summary>Why am I seeing this?</summary>
+              <ul>{invitation.observedSignals.map(signal => <li key={signal}>{signal}</li>)}</ul>
+            </details>
+          )}
           <div className="conciergeActions">
             <button className="btn" onClick={accept}>{copy.cta}</button>
             <button className="btn ghost" onClick={dismiss}>{copy.dismiss}</button>

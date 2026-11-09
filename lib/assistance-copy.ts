@@ -1,4 +1,5 @@
 import type { ConciergeIntent } from './concierge-handoff.ts';
+import type { BrandConfig } from './brand-config.ts';
 
 export type AssistanceCopy = { headline: string; body: string; cta: string; dismiss: string };
 
@@ -9,9 +10,11 @@ export function formatList(items: string[]): string {
 }
 
 /** Invitation wording is observational and only promises what the concierge can deliver. */
-export function assistanceCopy(intent: ConciergeIntent, entities: string[]): AssistanceCopy {
+export function assistanceCopy(intent: ConciergeIntent, entities: string[], brand?: Pick<BrandConfig, 'copy'>): AssistanceCopy {
   const list = formatList(entities);
   const dismiss = 'Not now';
+  const custom = brand?.copy?.[intent]?.(list);
+  if (custom) return { ...custom, dismiss };
   switch (intent) {
     case 'DESTINATION_COMPARISON':
       return list && entities.length > 1

@@ -30,6 +30,18 @@ test('package intents quote package prices', () => {
   assert.match(reply.facts[0].detail, /Barefoot Blue is \$3,180/);
 });
 
+test('replies include a destination image only for known destinations', () => {
+  const facts = replyToPriority(handoff(['Bali', 'Atlantis']), 'BUDGET').facts;
+  assert.match(facts[0].image ?? '', /^https:/);
+  assert.equal(facts[1].image, undefined);
+});
+
+test('a carried-over priority is acknowledged in the opening', () => {
+  assert.equal(openConcierge(handoff(['Bali'])).note, undefined);
+  const note = openConcierge({ ...handoff(['Bali', 'Maldives']), explicitPreferences: { priority: 'BUDGET' } }).note;
+  assert.match(note ?? '', /budget matters most/);
+});
+
 test('unknown entities are acknowledged, not invented', () => {
   assert.match(replyToPriority(handoff(['Atlantis']), 'BUDGET').facts[0].detail, /don't have details/);
 });

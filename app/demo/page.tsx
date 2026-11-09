@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { setActivationMode } from '@/lib/activation-mode';
+import PresenterToggle from '@/components/PresenterToggle';
 import { demoScenarios, pageForEvent, type DemoScenario, type ScenarioEvent } from '@/lib/demo-scenarios';
 import { clearCurrentSession, getSessionId, track } from '@/lib/tracking';
 
@@ -34,6 +35,17 @@ export default function DemoPage() {
     router.push('/destinations/maldives');
   };
 
+  // `/demo?run=<id>` starts a scenario immediately; the live split view embeds the site this way.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    const scenario = demoScenarios.find(s => s.id === new URLSearchParams(window.location.search).get('run'));
+    if (!scenario) return;
+    autoRan.current = true;
+    run(scenario);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <main className="shell"><section className="section topspace">
       <div className="eyebrow">Demo · Scenario replay</div>
@@ -52,6 +64,8 @@ export default function DemoPage() {
       <div className="agentActions" style={{ marginTop: 24 }}>
         <button className="btn ghost" onClick={reset}>Reset demo</button>
         <Link className="btn ghost" href="/agent">Open inspector</Link>
+        <Link className="btn" href="/demo/live">Live split view</Link>
+        <PresenterToggle />
       </div>
       {active && <p className="muted">Last run: {active.title}</p>}
     </section></main>

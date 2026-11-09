@@ -12,12 +12,14 @@ export type ValidationResult<T> = { valid: true; value: T } | { valid: false; er
 const isOneOf = <T extends string>(value: unknown, values: readonly T[]): value is T =>
   typeof value === 'string' && values.includes(value as T);
 
+export const MAX_TEXT_LENGTH = 80;
+
 export function validateJourneyContext(value: unknown): ValidationResult<JourneyContext> {
   if (!value || typeof value !== 'object') return { valid: false, errors: ['JourneyContext must be an object.'] };
   const c = value as Partial<JourneyContext>;
   const errors: string[] = [];
   for (const key of ['destinationsViewed', 'packagesViewed', 'recentJourney'] as const) {
-    if (!Array.isArray(c[key]) || c[key].some(item => typeof item !== 'string')) errors.push(`${key} must be a string array.`);
+    if (!Array.isArray(c[key]) || c[key].some(item => typeof item !== 'string' || item.length > MAX_TEXT_LENGTH)) errors.push(`${key} must be an array of strings up to ${MAX_TEXT_LENGTH} characters.`);
   }
   for (const key of ['destinationSwitches', 'packageSwitches', 'semanticEventCount'] as const) {
     if (!Number.isInteger(c[key]) || (c[key] as number) < 0) errors.push(`${key} must be a non-negative integer.`);
