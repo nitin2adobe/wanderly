@@ -113,3 +113,36 @@ Run a live evaluation (`--live`) to compare a real model with the baseline,
 then build the deterministic execution policy (confidence threshold, cooldown,
 dismissal, budget) and the customer-facing assistance UI that emits the
 `ASSISTANCE_*` events.
+
+## Phase D — Concierge activation plugin (POC)
+
+A mocked brand concierge demonstrates the activation layer end to end:
+
+```text
+events -> JourneyContext -> proposal (rules or AI) -> policy gate -> balloon -> handoff -> mock concierge
+```
+
+- `lib/assistance-policy.ts` — deterministic gate: ASSIST only, confidence >= 0.8, no forward progress,
+  no pending invitation, no repeat of a handled type, 2-minute cooldown after a dismissal, 2 invitations per session.
+- `lib/concierge-handoff.ts` — the payload the plugin hands to the concierge (observed signals, entities, preferences).
+- `lib/assistance-copy.ts` — observational balloon wording built from the entities.
+- `lib/mock-concierge.ts` — scripted demo concierge driven only by the handoff and curated `lib/data.ts`.
+- `lib/activation-proposal.ts` — optional AI proposal with silent fallback to the rules.
+- `components/ConciergePlugin.tsx` / `MockConciergePanel.tsx` — balloon and panel, mounted in the root layout
+  (hidden on `/agent` and `/booking`). An invitation is withdrawn if the journey stops warranting it.
+- `/agent` shows the activation trace (decision -> policy -> invitation) and the handoff JSON, with a Rules / AI-assisted toggle.
+- `lib/concierge-connector.ts` — the integration boundary. A brand implements `open(handoff)`; the plugin never depends on how the
+  concierge renders. The handoff is versioned (`version: 1`); the bundled demo connector opens the mock panel.
+- `/demo` — one-click scenario replay (right moment, right restraint, respectful adaptation) plus a reset button.
+- `lib/brand-adapters.ts` — `BrandAdapter` contract mapping a brand's own events to the engine's signals, with an
+  **electronics fixture** (`lib/brand-adapters.test.ts`) replayed through the same decision, policy and handoff code.
+  This is a fixture, not a validated integration; intent names such as `DESTINATION_COMPARISON` are still travel-flavoured.
+
+- `lib/assistance-outcomes.ts` — per-invitation outcome summary (accepted / dismissed / withdrawn / no response, chosen concierge priority,
+  progression afterwards), shown in the inspector. Progression after an invitation is correlation, not proof of impact.
+  The concierge priority is written back to the event stream as `ASSISTANCE_PREFERENCE`.
+- Keyboard: Escape dismisses the balloon or closes the panel; the panel takes focus when it opens.
+
+Not done yet: a live-model evaluation (needs `OPENAI_API_KEY` or an approved HTTP endpoint; the saved results are mock-only),
+and server-side policy state (it is currently per-browser localStorage). `lib/concierge-flow.test.ts`): comparison shows the balloon; comparison followed by booking
+stays silent; a dismissed invitation is not repeated. Quick replies are illustrative demo data, not live availability.

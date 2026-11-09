@@ -21,7 +21,9 @@ export type JourneyContext = {
   semanticEventCount: number;
 };
 
-const meaningful = (e: WanderlyEvent) => !['PAGE_VIEW','SESSION_START'].includes(e.eventType);
+// Assistance lifecycle events describe the plugin's own behaviour, not the visitor's journey.
+const NON_SEMANTIC = ['PAGE_VIEW','SESSION_START','ASSISTANCE_SHOWN','ASSISTANCE_ACCEPTED','ASSISTANCE_DISMISSED'];
+const meaningful = (e: WanderlyEvent) => !NON_SEMANTIC.includes(e.eventType) && !e.eventType.startsWith('ASSISTANCE_');
 const level = (n:number, medium=1, high=2): SignalLevel => n >= high ? 'HIGH' : n >= medium ? 'MEDIUM' : n > 0 ? 'LOW' : 'NONE';
 const title = (v:string) => v.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 

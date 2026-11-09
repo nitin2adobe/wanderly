@@ -1,10 +1,10 @@
 {
-  "timestamp": "2026-10-28T04:39:23.855Z",
+  "timestamp": "2026-11-09T18:05:07.510Z",
   "provider": "mock",
   "model": "wanderly-mock-v1",
   "mode": "mock",
   "datasetVersion": "phase-c-v2",
-  "runs": 1,
+  "runs": 3,
   "summary": {
     "rules": {
       "total": 37,
@@ -65,9 +65,9 @@
     "aiStability": 1
   },
   "latencyMs": {
-    "average": 0.020270270270270275,
+    "average": 0.006756756756756759,
     "p50": 0,
-    "p95": 0.1
+    "p95": 0.02
   },
   "tokenUsage": null,
   "journeys": [
@@ -109,19 +109,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.37
+          0.36,
+          0.03,
+          0.01
         ],
         "usages": []
       }
@@ -168,19 +174,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.04
+          0.1,
+          0.02,
+          0.01
         ],
         "usages": []
       }
@@ -231,19 +243,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.02
+          0.02,
+          0.01,
+          0.07
         ],
         "usages": []
       }
@@ -290,19 +308,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.1
+          0.02,
+          0.02,
+          0
         ],
         "usages": []
       }
@@ -349,19 +373,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.02
+          0.01,
+          0.01,
+          0
         ],
         "usages": []
       }
@@ -413,19 +443,25 @@
         "expectedAssistanceType": "DESTINATION_COMPARISON",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "DESTINATION_COMPARISON",
+          "DESTINATION_COMPARISON",
           "DESTINATION_COMPARISON"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated switching and comparison suggest the destination choice remains unresolved."
         ],
         "latenciesMs": [
-          0.02
+          0.01,
+          0,
+          0
         ],
         "usages": []
       }
@@ -477,19 +513,25 @@
         "expectedAssistanceType": "DESTINATION_COMPARISON",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "DESTINATION_COMPARISON",
+          "DESTINATION_COMPARISON",
           "DESTINATION_COMPARISON"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated switching and comparison suggest the destination choice remains unresolved."
         ],
         "latenciesMs": [
-          0.02
+          0.01,
+          0,
+          0
         ],
         "usages": []
       }
@@ -533,19 +575,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
-          0.01
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -596,19 +644,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.06
+          0.01,
+          0,
+          0
         ],
         "usages": []
       }
@@ -662,19 +716,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.02
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -726,19 +786,25 @@
         "expectedAssistanceType": "DESTINATION_COMPARISON",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "DESTINATION_COMPARISON",
+          "DESTINATION_COMPARISON",
           "DESTINATION_COMPARISON"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated switching and comparison suggest the destination choice remains unresolved."
         ],
         "latenciesMs": [
-          0.01
+          0.01,
+          0,
+          0
         ],
         "usages": []
       }
@@ -783,19 +849,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The current context does not show meaningful unresolved friction."
         ],
         "latenciesMs": [
-          0.01
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -846,18 +918,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0.01,
+          0,
           0
         ],
         "usages": []
@@ -912,19 +990,25 @@
         "expectedAssistanceType": "PACKAGE_SELECTION",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "PACKAGE_SELECTION",
+          "PACKAGE_SELECTION",
           "PACKAGE_SELECTION"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated pricing exploration plus comparison suggests uncertainty about package selection."
         ],
         "latenciesMs": [
-          0.01
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -974,19 +1058,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
-          0.01
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -1041,18 +1131,24 @@
         "expectedAssistanceType": "PACKAGE_SELECTION",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1102,19 +1198,25 @@
         "expectedAssistanceType": "TRAVEL_INFORMATION",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "TRAVEL_INFORMATION",
+          "TRAVEL_INFORMATION",
           "TRAVEL_INFORMATION"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated information seeking suggests an unresolved question where contextual help may be valuable."
         ],
         "latenciesMs": [
-          0.01
+          0.01,
+          0,
+          0
         ],
         "usages": []
       }
@@ -1155,19 +1257,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The current context does not show meaningful unresolved friction."
         ],
         "latenciesMs": [
-          0.01
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -1215,18 +1323,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1276,18 +1390,24 @@
         "expectedAssistanceType": "TRAVEL_INFORMATION",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "TRAVEL_INFORMATION",
+          "TRAVEL_INFORMATION",
           "TRAVEL_INFORMATION"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated information seeking suggests an unresolved question where contextual help may be valuable."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1336,18 +1456,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1397,19 +1523,25 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
-          0.01
+          0,
+          0,
+          0
         ],
         "usages": []
       }
@@ -1454,18 +1586,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1510,18 +1648,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "LOW",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The current context does not show meaningful unresolved friction."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1567,18 +1711,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "LOW",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The current context does not show meaningful unresolved friction."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1627,18 +1777,24 @@
         "expectedAssistanceType": "DESTINATION_COMPARISON",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1676,18 +1832,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The current context does not show meaningful unresolved friction."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1739,18 +1901,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1812,18 +1980,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1878,18 +2052,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1942,18 +2122,24 @@
         "expectedAssistanceType": "DESTINATION_COMPARISON",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -1999,18 +2185,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "MEDIUM",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -2059,18 +2251,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -2119,18 +2317,24 @@
         "expectedAssistanceType": "TRAVEL_INFORMATION",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "TRAVEL_INFORMATION",
+          "TRAVEL_INFORMATION",
           "TRAVEL_INFORMATION"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated information seeking suggests an unresolved question where contextual help may be valuable."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -2188,18 +2392,24 @@
         "expectedAssistanceType": "PACKAGE_SELECTION",
         "labelConfidence": "HIGH",
         "decisions": [
+          "ASSIST",
+          "ASSIST",
           "ASSIST"
         ],
         "assistanceTypes": [
+          "PACKAGE_SELECTION",
+          "PACKAGE_SELECTION",
           "PACKAGE_SELECTION"
         ],
         "decisionCounts": {
-          "ASSIST": 1
+          "ASSIST": 3
         },
         "reasons": [
           "Repeated pricing exploration plus comparison suggests uncertainty about package selection."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -2249,18 +2459,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "LOW",
         "decisions": [
+          "WAIT",
+          "WAIT",
           "WAIT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "WAIT": 1
+          "WAIT": 3
         },
         "reasons": [
           "There are early signals, but the current context does not establish enough unresolved need to interrupt."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
@@ -2311,18 +2527,24 @@
         "expectedAssistanceType": "NONE",
         "labelConfidence": "HIGH",
         "decisions": [
+          "SILENT",
+          "SILENT",
           "SILENT"
         ],
         "assistanceTypes": [
+          "NONE",
+          "NONE",
           "NONE"
         ],
         "decisionCounts": {
-          "SILENT": 1
+          "SILENT": 3
         },
         "reasons": [
           "The visitor is progressing toward booking, so interruption is unlikely to help."
         ],
         "latenciesMs": [
+          0,
+          0,
           0
         ],
         "usages": []
