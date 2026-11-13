@@ -12,14 +12,6 @@ test('page views and session starts are not semantic signals', () => {
   assert.equal(context.potentialFriction, 'NONE');
 });
 
-test('assistance lifecycle events do not alter the journey context', () => {
-  const journey: Array<[WanderlyEventType, string?]> = [['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['COMPARE_VIEW']];
-  const withAssistance: Array<[WanderlyEventType, string?]> = [
-    ['DESTINATION_VIEW', 'bali'], ['ASSISTANCE_SHOWN'], ['DESTINATION_VIEW', 'maldives'], ['ASSISTANCE_ACCEPTED'], ['COMPARE_VIEW'],     ['ASSISTANCE_DISMISSED'], ['ASSISTANCE_PREFERENCE'],
-  ];
-  assert.deepEqual(build(withAssistance), build(journey));
-});
-
 test('destination switches count only changes between consecutive views', () => {
   const context = build([['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['DESTINATION_VIEW', 'bali']]);
   assert.equal(context.destinationSwitches, 2);

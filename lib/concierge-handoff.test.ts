@@ -43,7 +43,8 @@ test('over-long entities and signals are rejected by the validator and truncated
   const c = context(comparison);
   const long = 'x'.repeat(500);
   const d = { ...decideAssistance(c), evidence: [long] };
-  const h = buildHandoff(c, d, 's');
+  const h = buildHandoff({ ...c, destinationsViewed: [long] }, d, 's');
+  assert.equal(h.entities[0].length, 240);
   assert.equal(h.observedSignals[0].length, 240);
   assert.equal(validateHandoff(h).valid, true);
   assert.equal(validateHandoff({ ...h, entities: [long] }).valid, false);
