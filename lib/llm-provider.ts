@@ -30,6 +30,7 @@ const systemInstruction = `You decide whether proactive assistance would genuine
 The user message is a JourneyContext JSON object. Return only a JSON object with exactly these fields:
 {"decision": ${assistanceDecisions.map(d => `"${d}"`).join(' | ')}, "confidence": number between 0 and 1, "assistanceType": ${assistanceTypes.map(t => `"${t}"`).join(' | ')}, "headline": string, "reason": string, "evidence": string[]}
 assistanceType must be "NONE" unless decision is "ASSIST", and must name a specific type when decision is "ASSIST".
+headline and reason must be non-empty strings for every decision, including SILENT and WAIT. Every evidence entry must be a non-empty string.
 Default to SILENT or WAIT when evidence is weak. Progression beats activity. Comparison alone does not justify intervention.
 Do not infer demographics, sensitive attributes, or facts absent from JourneyContext.
 The reason must be concise and explain observable evidence, never hidden chain-of-thought.`;
@@ -183,6 +184,59 @@ export class OpenAIProvider implements LLMProvider {
   }
 }
 
+export class BedrockConverseProvider implements LLMProvider {
+  readonly name = 'bedrock';
+  readonly model: string;
+  private readonly endpoint: string;
+  private readonly apiKey: string;
+  private readonly fetchImpl: typeof fetch;
+  lastUsage?: TokenUsage;
+
+  constructor(model: string, endpoint: string, apiKey: string, fetchImpl: typeof fetch = fetch) {
+    this.model = model;
+    this.endpoint = endpoint;
+    this.apiKey = apiKey;
+    this.fetchImpl = fetchImpl;
+  }
+
+  async generateStructured(request: LLMRequest): Promise<AssistanceDecisionSchema> {
+    this.lastUsage = undefined;
+    const response = await this.fetchImpl(this.endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${this.apiKey}` },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      body: JSON.stringify({
+        system: [{ text: request.systemInstruction }],
+        messages: [{ role: 'user', content: [{ text: JSON.stringify(request.context) }] }],
+        inferenceConfig: { maxTokens: 1024 },
+      }),
+    });
+    if (!response.ok) throw new Error(`Bedrock provider returned HTTP ${response.status}.`);
+    const body = await response.json() as {
+      output?: { message?: { content?: Array<{ text?: string }> } };
+      stopReason?: string;
+      usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number };
+    } | null;
+    if (body?.stopReason && body.stopReason !== 'end_turn') {
+      throw new Error('Bedrock provider did not complete its response.');
+    }
+    this.lastUsage = body?.usage && {
+      promptTokens: body.usage.inputTokens,
+      completionTokens: body.usage.outputTokens,
+      totalTokens: body.usage.totalTokens,
+    };
+    const blocks = body?.output?.message?.content;
+    const content = Array.isArray(blocks)
+      ? blocks.filter(block => typeof block?.text === 'string').map(block => block.text).join('')
+      : '';
+    if (!content.trim()) throw new Error('Bedrock provider returned no message content.');
+    let parsed: unknown;
+    try { parsed = JSON.parse(content.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()); }
+    catch { throw new Error('Bedrock provider returned invalid JSON content.'); }
+    return parsed as AssistanceDecisionSchema;
+  }
+}
+
 export function selectLLMProvider(env: NodeJS.ProcessEnv = process.env): ProviderSelection {
   const configured = env.WANDERLY_LLM_PROVIDER?.toLowerCase();
   if (configured === 'openai' && env.OPENAI_API_KEY && env.OPENAI_MODEL) {
@@ -194,6 +248,10 @@ export function selectLLMProvider(env: NodeJS.ProcessEnv = process.env): Provide
   const endpoint = env.WANDERLY_LLM_ENDPOINT;
   const apiKey = env.WANDERLY_LLM_API_KEY;
   const model = env.WANDERLY_LLM_MODEL;
+  const bedrockKey = env.AWS_BEARER_TOKEN_BEDROCK || apiKey;
+  if (configured === 'bedrock' && endpoint && bedrockKey && model) {
+    return { provider: new BedrockConverseProvider(model, endpoint, bedrockKey), mode: 'live' };
+  }
   if (configured === 'http' && endpoint && apiKey && model) {
     return { provider: new HttpLLMProvider(model, endpoint, apiKey), mode: 'live' };
   }

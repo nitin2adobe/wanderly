@@ -1,8 +1,8 @@
 import type { AssistanceType, DecisionResult } from './assistance-decision.ts';
 import type { ValidationResult } from './assistance-schema.ts';
-import { MAX_TEXT_LENGTH } from './assistance-schema.ts';
 import type { JourneyContext } from './journey-context.ts';
 
+const MAX_TEXT_LENGTH = 240;
 const MAX_SIGNAL_LENGTH = 240;
 
 export type ConciergeIntent = Exclude<AssistanceType, 'NONE'>;

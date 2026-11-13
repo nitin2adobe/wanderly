@@ -4,11 +4,7 @@ import { useEffect, useRef } from 'react';
 import { getEvents, getSessionId, track } from '@/lib/tracking';
 
 function semantic(path:string){
-  if(path.startsWith('/destinations/')){
-    // Only slug-shaped values become entities; arbitrary URL text must not reach storage, prompts or handoffs.
-    const slug=path.split('/')[2];
-    return /^[a-z0-9-]{1,40}$/.test(slug)?{type:'DESTINATION_VIEW' as const,entity:slug}:null;
-  }
+  if(path.startsWith('/destinations/')) return {type:'DESTINATION_VIEW' as const,entity:path.split('/')[2]};
   if(path==='/compare') return {type:'COMPARE_VIEW' as const};
   if(path==='/packages') return {type:'PRICE_VIEW' as const};
   if(path==='/travel-info') return {type:'TRAVEL_INFO_VIEW' as const};

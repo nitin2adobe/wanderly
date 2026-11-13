@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { validateAssistanceDecision } from './assistance-schema.ts';
-import { HttpLLMProvider, OpenAIProvider, systemInstruction, type LLMRequest } from './llm-provider.ts';
+import { BedrockConverseProvider, HttpLLMProvider, OpenAIProvider, selectLLMProvider, systemInstruction, type LLMRequest } from './llm-provider.ts';
 import { createRateLimiter, readJsonBody } from './request-guard.ts';
 import type { JourneyContext } from './journey-context.ts';
 
@@ -15,6 +15,7 @@ const decision = { decision: 'SILENT', confidence: 0.9, assistanceType: 'NONE', 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 test('system instruction describes the output schema', () => {
+  assert.ok(systemInstruction.includes('headline and reason must be non-empty strings for every decision'));
   for (const term of ['"decision"', '"confidence"', '"assistanceType"', '"headline"', '"reason"', '"evidence"', '"ASSIST"', '"TRAVEL_INFORMATION"']) {
     assert.ok(systemInstruction.includes(term), `missing ${term}`);
   }
@@ -60,6 +61,57 @@ test('HTTP provider accepts bare or wrapped decisions and rejects failures', asy
   assert.deepEqual(await provider.generateStructured(request), decision);
   await assert.rejects(provider.generateStructured(request), /HTTP 503/);
   await assert.rejects(provider.generateStructured(request), /non-object/);
+});
+
+test('Bedrock provider sends Converse format without temperature and parses text blocks and usage', async () => {
+  const endpoint = 'https://example.test/model/m/converse';
+  const provider = new BedrockConverseProvider('m', endpoint, 'key', (async (url: unknown, init: RequestInit) => {
+    assert.equal(url, endpoint);
+    assert.equal(init.method, 'POST');
+    assert.equal(new Headers(init.headers).get('authorization'), 'Bearer key');
+    assert.ok(init.signal);
+    assert.deepEqual(JSON.parse(init.body as string), {
+      system: [{ text: systemInstruction }],
+      messages: [{ role: 'user', content: [{ text: JSON.stringify(context) }] }],
+      inferenceConfig: { maxTokens: 1024 },
+    });
+    return json({
+      output: { message: { content: [{ reasoningContent: {} }, { text: '```json\n' }, { text: JSON.stringify(decision) + '\n```' }] } },
+      stopReason: 'end_turn', usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+    });
+  }) as typeof fetch);
+  assert.deepEqual(await provider.generateStructured(request), decision);
+  assert.deepEqual(provider.lastUsage, { promptTokens: 1, completionTokens: 2, totalTokens: 3 });
+});
+
+test('Bedrock provider clears stale usage and rejects errors, missing content, invalid JSON, and incomplete output', async () => {
+  const responses = [
+    json({ output: { message: { content: [{ text: JSON.stringify(decision) }] } }, usage: { totalTokens: 5 } }),
+    json({ message: 'private provider detail' }, 403),
+    json(null),
+    json({ output: { message: { content: [{ text: 'not json' }] } } }),
+    json({ output: { message: { content: [{ text: JSON.stringify(decision) }] } }, stopReason: 'max_tokens' }),
+  ];
+  const provider = new BedrockConverseProvider('m', 'https://example.test', 'key', (async () => responses.shift()!) as typeof fetch);
+  await provider.generateStructured(request);
+  assert.equal(provider.lastUsage?.totalTokens, 5);
+  await assert.rejects(provider.generateStructured(request), /^Error: Bedrock provider returned HTTP 403\.$/);
+  assert.equal(provider.lastUsage, undefined);
+  await assert.rejects(provider.generateStructured(request), /no message content/);
+  await assert.rejects(provider.generateStructured(request), /invalid JSON/);
+  await assert.rejects(provider.generateStructured(request), /did not complete/);
+});
+
+test('Bedrock selection requires endpoint, model, and bearer credentials', () => {
+  const env: NodeJS.ProcessEnv = { NODE_ENV: 'test', WANDERLY_LLM_PROVIDER: 'bedrock', WANDERLY_LLM_ENDPOINT: 'https://example.test/model/m/converse', WANDERLY_LLM_MODEL: 'm', AWS_BEARER_TOKEN_BEDROCK: 'key' };
+  const selection = selectLLMProvider(env);
+  assert.equal(selection.mode, 'live');
+  assert.equal(selection.provider.name, 'bedrock');
+  assert.equal(selection.provider.model, 'm');
+  for (const missing of ['WANDERLY_LLM_ENDPOINT', 'WANDERLY_LLM_MODEL', 'AWS_BEARER_TOKEN_BEDROCK']) {
+    assert.equal(selectLLMProvider({ ...env, [missing]: '' }).mode, 'mock');
+  }
+  assert.equal(selectLLMProvider({ ...env, AWS_BEARER_TOKEN_BEDROCK: '', WANDERLY_LLM_API_KEY: 'key' }).mode, 'live');
 });
 
 test('rate limiter blocks after the limit and recovers after the window', () => {
