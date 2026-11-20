@@ -3,7 +3,7 @@ import type { WanderlyEvent } from './events.ts';
 export type InvitationOutcome = {
   assistanceType: string;
   source: string;
-  response: 'ACCEPTED' | 'DISMISSED' | 'WITHDRAWN' | 'NO_RESPONSE';
+  response: 'AUTO_TRIGGERED' | 'ACCEPTED' | 'DISMISSED' | 'WITHDRAWN' | 'NO_RESPONSE';
   priority?: string;
   /** Visitor searched dates or started booking after the invitation was shown. */
   progressedAfter: boolean;
@@ -23,12 +23,16 @@ export function summariseOutcomes(sessionEvents: WanderlyEvent[]): InvitationOut
     const later = sessionEvents.slice(index + 1);
     const next = later.findIndex(e => e.eventType === 'ASSISTANCE_SHOWN');
     const window = next === -1 ? later : later.slice(0, next);
-    const response = window.find(e => (e.eventType === 'ASSISTANCE_ACCEPTED' || e.eventType === 'ASSISTANCE_DISMISSED') && e.metadata?.assistanceType === assistanceType);
+    let response = window.find(e => (e.eventType === 'ASSISTANCE_TRIGGERED' || e.eventType === 'ASSISTANCE_ACCEPTED' || e.eventType === 'ASSISTANCE_DISMISSED') && e.metadata?.assistanceType === assistanceType);
+    if (response?.eventType === 'ASSISTANCE_TRIGGERED') {
+      response = window.find(e => e.eventType === 'ASSISTANCE_DISMISSED' && e.metadata?.assistanceType === assistanceType) ?? response;
+    }
     const preference = window.filter(e => e.eventType === 'ASSISTANCE_PREFERENCE').at(-1);
     outcomes.push({
       assistanceType,
       source: String(event.metadata?.source ?? 'unknown'),
       response: !response ? 'NO_RESPONSE'
+        : response.eventType === 'ASSISTANCE_TRIGGERED' ? 'AUTO_TRIGGERED'
         : response.eventType === 'ASSISTANCE_ACCEPTED' ? 'ACCEPTED'
         : response.metadata?.reason === 'withdrawn' ? 'WITHDRAWN' : 'DISMISSED',
       priority: preference?.metadata?.priority as string | undefined,

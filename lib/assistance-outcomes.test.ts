@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { summariseOutcomes } from './assistance-outcomes.ts';
+import { deriveMemory } from './assistance-memory.ts';
 import type { WanderlyEvent, WanderlyEventType } from './events.ts';
 
 const ev = (eventType: WanderlyEventType, metadata?: Record<string, unknown>): WanderlyEvent =>
@@ -27,4 +28,25 @@ test('dismissed, withdrawn and unanswered invitations are distinguished', () => 
 
 test('no invitations yields no outcomes', () => {
   assert.deepEqual(summariseOutcomes([ev('DESTINATION_VIEW')]), []);
+});
+
+test('automatic activation is not visitor acceptance or a stated preference', () => {
+  const events = [
+    ev('ASSISTANCE_SHOWN', { ...type, source: 'ai-live' }),
+    ev('ASSISTANCE_TRIGGERED', { ...type, initialMessage: 'Hi' }),
+  ];
+  assert.equal(summariseOutcomes(events)[0].response, 'AUTO_TRIGGERED');
+  assert.equal(summariseOutcomes(events)[0].source, 'ai-live');
+  assert.deepEqual(deriveMemory(events).acceptedTypes, []);
+  assert.equal(deriveMemory(events).preferredPriority, undefined);
+});
+
+test('closing automatically opened chat records a visitor dismissal', () => {
+  const events = [
+    ev('ASSISTANCE_SHOWN', type),
+    ev('ASSISTANCE_TRIGGERED', type),
+    ev('ASSISTANCE_DISMISSED', { ...type, reason: 'visitor' }),
+  ];
+  assert.equal(summariseOutcomes(events)[0].response, 'DISMISSED');
+  assert.equal(deriveMemory(events).visitorDismissals, 1);
 });

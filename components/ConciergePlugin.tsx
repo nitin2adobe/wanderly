@@ -12,28 +12,36 @@ import { getPolicyOptions, POLICY_SETTINGS_CHANGED } from '@/lib/policy-settings
 import { brandIdForPath, getBrandConfig } from '@/lib/brand-config';
 import { deriveMemory } from '@/lib/assistance-memory';
 import { getEvents, getSessionId, track } from '@/lib/tracking';
-import MockConciergePanel from './MockConciergePanel';
-import { CONCIERGE_OPEN_EVENT, demoConnector, type ConciergeConnector } from '@/lib/concierge-connector';
+import { adobeConnector, CONCIERGE_CLOSE_EVENT, isHiddenConciergeRoute as isHiddenRoute, type ConciergeConnector } from '@/lib/concierge-connector';
 
 const EVALUATION_DELAY_MS = 1200;
-const HIDDEN_ROUTES = ['/agent', '/booking'];
-// Demo control pages host the site in an iframe, so the plugin runs inside the frame instead.
-const HIDDEN_EXACT = ['/demo', '/demo/live'];
-const isHiddenRoute = (pathname: string | null) =>
-  !!pathname && (HIDDEN_EXACT.includes(pathname) || HIDDEN_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`)));
-
 function sessionEvents() {
   const sid = getSessionId();
   return { sid, events: getEvents().filter(e => e.sessionId === sid) };
 }
 
-export default function ConciergePlugin({ connector = demoConnector }: { connector?: ConciergeConnector }) {
+export default function ConciergePlugin({ connector = adobeConnector }: { connector?: ConciergeConnector }) {
   const pathname = usePathname();
   const [invitation, setInvitation] = useState<ConciergeHandoff | null>(null);
-  const [panelHandoff, setPanelHandoff] = useState<ConciergeHandoff | null>(null);
+  const [failedInvitation, setFailedInvitation] = useState<ConciergeHandoff | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const invitationRef = useRef(invitation);
+  const automaticHandoff = useRef<ConciergeHandoff | null>(null);
   invitationRef.current = invitation;
+
+  const triggerChat = useCallback((handoff: ConciergeHandoff) => {
+    try {
+      connector.open(handoff, { initialMessage: 'Hi' });
+    } catch (error) {
+      console.error('Unable to open Brand Concierge automatically:', error);
+      setInvitation(handoff);
+      setFailedInvitation(handoff);
+      return;
+    }
+    track('ASSISTANCE_TRIGGERED', window.location.pathname, undefined, { assistanceType: handoff.intent, handoff, initialMessage: 'Hi' });
+    automaticHandoff.current = handoff;
+    setInvitation(null);
+  }, [connector]);
 
   const evaluate = useCallback(async () => {
     // Never create (or count) an invitation the visitor cannot see.
@@ -58,7 +66,10 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
       // Restore an invitation that survived a page reload.
       const last = [...events].reverse().find(e => e.eventType === 'ASSISTANCE_SHOWN');
       const restored = validateHandoff(last?.metadata?.handoff);
-      if (restored.valid) setInvitation(restored.value);
+      if (restored.valid) {
+        if (restored.value.brand === brandIdForPath(window.location.pathname) && connector.supportsBrand(restored.value.brand)) triggerChat(restored.value);
+        else setInvitation(restored.value);
+      }
       else track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: last?.metadata?.assistanceType, reason: 'unrestorable' });
       return;
     }
@@ -68,14 +79,15 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
     const { decision, source } = await proposeAssistance(context, mode === 'ai');
     // The journey may have moved on while the reasoner was thinking; a newer evaluation is already scheduled.
     const latest = sessionEvents();
-    if (JSON.stringify(buildJourneyContext(latest.events)) !== JSON.stringify(context) || invitationRef.current || hasPendingInvitation(latest.events)) return;
+    if (isHiddenRoute(window.location.pathname) || latest.sid !== sid || JSON.stringify(buildJourneyContext(latest.events)) !== JSON.stringify(context) || invitationRef.current || hasPendingInvitation(latest.events)) return;
     const policy = evaluatePolicy(decision, context, latest.events, new Date(), getPolicyOptions());
     if (!policy.allowed) return;
     const memory = deriveMemory(latest.events);
     const handoff = buildHandoff(context, decision, sid, new Date(), brandIdForPath(window.location.pathname), memory.preferredPriority ? { priority: memory.preferredPriority } : {});
     track('ASSISTANCE_SHOWN', window.location.pathname, undefined, { assistanceType: handoff.intent, handoff, source });
-    setInvitation(handoff);
-  }, []);
+    if (connector.supportsBrand(handoff.brand)) triggerChat(handoff);
+    else setInvitation(handoff);
+  }, [connector, triggerChat]);
 
   useEffect(() => {
     const schedule = () => {
@@ -97,12 +109,14 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
   }, [evaluate]);
 
   useEffect(() => {
-    const onOpen = (event: Event) => {
-      const handoff = validateHandoff((event as CustomEvent).detail);
-      if (handoff.valid) setPanelHandoff(handoff.value);
+    const onClose = () => {
+      const current = automaticHandoff.current;
+      automaticHandoff.current = null;
+      if (!current || current.sessionId !== getSessionId()) return;
+      track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: current.intent, reason: 'visitor' });
     };
-    window.addEventListener(CONCIERGE_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(CONCIERGE_OPEN_EVENT, onOpen);
+    window.addEventListener(CONCIERGE_CLOSE_EVENT, onClose);
+    return () => window.removeEventListener(CONCIERGE_CLOSE_EVENT, onClose);
   }, []);
 
   useEffect(() => {
@@ -121,8 +135,14 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
 
   const accept = () => {
     if (!invitation) return;
+    try {
+      connector.open(invitation);
+    } catch (error) {
+      console.error('Unable to open Brand Concierge:', error);
+      setFailedInvitation(invitation);
+      return;
+    }
     track('ASSISTANCE_ACCEPTED', window.location.pathname, undefined, { assistanceType: invitation.intent, handoff: invitation });
-    connector.open(invitation);
     setInvitation(null);
   };
   const dismiss = () => {
@@ -133,13 +153,15 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
 
   const brand = invitation ? getBrandConfig(invitation.brand) : undefined;
   const copy = invitation ? assistanceCopy(invitation.intent, invitation.entities, brand) : null;
+  const isCurrentBrand = invitation?.brand === brandIdForPath(pathname);
+  const chatAvailable = !!invitation && isCurrentBrand && connector.supportsBrand(invitation.brand);
   return (
     <>
       {invitation && copy && (
         <div className="conciergeBalloon" role="dialog" aria-label="Concierge suggestion">
           <div className="conciergeBalloonHead"><span className="conciergeAvatar" aria-hidden="true">{(brand?.displayName ?? 'B').charAt(0)}</span><strong>{brand?.displayName ?? 'Brand'} concierge</strong></div>
           <h3>{copy.headline}</h3>
-          <p>{copy.body}</p>
+          <p>{chatAvailable ? `${copy.body} Share your question in the chat.` : isCurrentBrand ? `Live chat isn't configured for ${brand?.displayName ?? 'this brand'}.` : 'This suggestion is not available on this page.'}</p>
           {invitation.observedSignals.length > 0 && (
             <details className="conciergeWhy">
               <summary>Why am I seeing this?</summary>
@@ -147,17 +169,11 @@ export default function ConciergePlugin({ connector = demoConnector }: { connect
             </details>
           )}
           <div className="conciergeActions">
-            <button className="btn" onClick={accept}>{copy.cta}</button>
+            {chatAvailable && <button className="btn" onClick={accept}>{copy.cta}</button>}
             <button className="btn ghost" onClick={dismiss}>{copy.dismiss}</button>
           </div>
+          {failedInvitation === invitation && <p role="alert">Chat couldn't be opened. Try again or reload the page.</p>}
         </div>
-      )}
-      {panelHandoff && (
-        <MockConciergePanel
-          initialHandoff={panelHandoff}
-          onClose={() => setPanelHandoff(null)}
-          onPreference={priority => track('ASSISTANCE_PREFERENCE', window.location.pathname, undefined, { assistanceType: panelHandoff.intent, priority })}
-        />
       )}
     </>
   );

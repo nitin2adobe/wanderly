@@ -41,7 +41,7 @@ export default function ElectronicsDemoPage() {
     <main className="shell"><section className="section topspace">
       <div className="eyebrow">Volt Electronics · Demo storefront (fixture brand)</div>
       <h1 className="display">Find the right laptop.</h1>
-      <p className="muted">A second brand using the same activation plugin through an adapter. Illustrative catalog, not a real integration.</p>
+      <p className="muted">A second brand using the same activation plugin through an adapter. Illustrative catalog; live chat is not configured for this fixture.</p>
       <div className="demoGrid">
         {electronicsCatalog.map(p => (
           <div className="panel" key={p.name}>

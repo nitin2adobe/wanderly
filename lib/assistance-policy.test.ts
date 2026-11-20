@@ -49,8 +49,8 @@ test('a visible invitation blocks another', () => {
   assert.equal(evaluate(journey2, session).rule, 'INVITATION_PENDING');
 });
 
-test('a dismissed or accepted type is not offered again', () => {
-  for (const response of ['ASSISTANCE_DISMISSED', 'ASSISTANCE_ACCEPTED'] as const) {
+test('a dismissed, accepted or automatically triggered type is not offered again', () => {
+  for (const response of ['ASSISTANCE_DISMISSED', 'ASSISTANCE_ACCEPTED', 'ASSISTANCE_TRIGGERED'] as const) {
     const session = [
       assistanceEvent('ASSISTANCE_SHOWN', 'DESTINATION_COMPARISON', '2026-01-01T00:00:00Z'),
       assistanceEvent(response, 'DESTINATION_COMPARISON', '2026-01-01T00:00:30Z'),
