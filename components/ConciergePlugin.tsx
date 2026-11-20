@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { assistanceCopy } from '@/lib/assistance-copy';
 import { evaluatePolicy, hasPendingInvitation, isForwardProgress } from '@/lib/assistance-policy';
+import { conciergeOpeningMessage } from '@/lib/concierge-message';
 import { buildHandoff, validateHandoff, type ConciergeHandoff } from '@/lib/concierge-handoff';
 import { EVENT_UPDATED } from '@/lib/events';
 import { buildJourneyContext } from '@/lib/journey-context';
@@ -30,15 +31,16 @@ export default function ConciergePlugin({ connector = adobeConnector }: { connec
   invitationRef.current = invitation;
 
   const triggerChat = useCallback((handoff: ConciergeHandoff) => {
+    const initialMessage = conciergeOpeningMessage(handoff, buildJourneyContext(sessionEvents().events).destinationsViewed);
     try {
-      connector.open(handoff, { initialMessage: 'Hi' });
+      connector.open(handoff, { initialMessage });
     } catch (error) {
       console.error('Unable to open Brand Concierge automatically:', error);
       setInvitation(handoff);
       setFailedInvitation(handoff);
       return;
     }
-    track('ASSISTANCE_TRIGGERED', window.location.pathname, undefined, { assistanceType: handoff.intent, handoff, initialMessage: 'Hi' });
+    track('ASSISTANCE_TRIGGERED', window.location.pathname, undefined, { assistanceType: handoff.intent, handoff, initialMessage });
     automaticHandoff.current = handoff;
     setInvitation(null);
   }, [connector]);

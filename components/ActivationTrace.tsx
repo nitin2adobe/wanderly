@@ -22,7 +22,7 @@ export default function ActivationTrace({ events, showHandoff = true }: { events
   const outcomes = summariseOutcomes(events);
   const memory = useMemo(() => deriveMemory(events), [events]);
   const handoff = [...lifecycle].reverse().map(e => e.metadata?.handoff as ConciergeHandoff | undefined).find(Boolean);
-  const stage = status === 'ASSISTANCE_TRIGGERED' ? 'Automatically opened — Hi requested' : status === 'ASSISTANCE_SHOWN' ? 'Balloon visible' : status === 'ASSISTANCE_ACCEPTED' ? 'Accepted — chat requested' : status === 'ASSISTANCE_DISMISSED' ? 'Dismissed' : 'No invitation yet';
+  const stage = status === 'ASSISTANCE_TRIGGERED' ? 'Automatically opened — contextual question sent' : status === 'ASSISTANCE_SHOWN' ? 'Balloon visible' : status === 'ASSISTANCE_ACCEPTED' ? 'Accepted — chat requested' : status === 'ASSISTANCE_DISMISSED' ? 'Dismissed' : 'No invitation yet';
   const [mode, setMode] = useState<ActivationMode>('rules');
   useEffect(() => {
     const sync = () => setMode(getActivationMode());
@@ -65,7 +65,7 @@ export default function ActivationTrace({ events, showHandoff = true }: { events
       {showHandoff && (
         <>
           <div className="eyebrow" style={{ marginTop: 16 }}>Invitation payload (local only)</div>
-          <p className="muted">This payload is not sent to Adobe Brand Concierge. Automatic activation requests only a generic “Hi”; it is not visitor acceptance.</p>
+          <p className="muted">Only the intent, catalog names and any chosen priority are sent to Adobe Brand Concierge, as a first-person opening question. The session ID and raw events are not sent. Automatic activation is not visitor acceptance.</p>
           {handoff ? <pre className="handoffJson">{JSON.stringify(handoff, null, 2)}</pre> : <p className="muted">No handoff yet. A payload is created when an invitation is shown.</p>}
         </>
       )}
