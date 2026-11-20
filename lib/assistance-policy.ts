@@ -20,7 +20,7 @@ export type PolicyOptions = {
 export const defaultPolicy: PolicyOptions = { minConfidence: 0.8, maxInvitationsPerSession: 2, cooldownMs: 120_000 };
 
 const assistanceEvents = (events: WanderlyEvent[]) =>
-  events.filter(e => e.eventType === 'ASSISTANCE_SHOWN' || e.eventType === 'ASSISTANCE_ACCEPTED' || e.eventType === 'ASSISTANCE_DISMISSED');
+  events.filter(e => e.eventType === 'ASSISTANCE_SHOWN' || e.eventType === 'ASSISTANCE_TRIGGERED' || e.eventType === 'ASSISTANCE_ACCEPTED' || e.eventType === 'ASSISTANCE_DISMISSED');
 const typeOf = (e: WanderlyEvent) => e.metadata?.assistanceType as AssistanceType | undefined;
 
 /** True when the latest invitation has been shown but not yet accepted or dismissed. */
@@ -67,7 +67,7 @@ export function evaluatePolicy(
     return block('REPEATED_DISMISSALS', `The visitor dismissed ${visitorDismissals} invitations; no further invitations this session.`);
   }
   if (history.some(e => e.eventType !== 'ASSISTANCE_SHOWN' && typeOf(e) === decision.assistanceType)) {
-    return block('TYPE_ALREADY_HANDLED', `The visitor already responded to ${decision.assistanceType} assistance this session.`);
+    return block('TYPE_ALREADY_HANDLED', `${decision.assistanceType} assistance was already handled this session.`);
   }
   const lastDismissal = history.filter(e => e.eventType === 'ASSISTANCE_DISMISSED').at(-1);
   if (lastDismissal) {

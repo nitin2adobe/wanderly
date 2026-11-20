@@ -12,19 +12,18 @@ const policyFor = (events: Parameters<typeof journeyEvents>[0]) => {
   return evaluatePolicy(decideAssistance(context), context, []);
 };
 
-test('every scenario produces an invitation before its follow-up', () => {
-  for (const scenario of demoScenarios) assert.equal(policyFor(scenario.events).allowed, true, scenario.id);
+test('comparison scenarios allow automatic assistance except when booking is already progressing', () => {
+  for (const scenario of demoScenarios) assert.equal(policyFor(scenario.events).allowed, scenario.id !== 'right-restraint', scenario.id);
 });
 
-test('the restraint scenario is silenced by its follow-up', () => {
+test('the restraint scenario is silent before any chat or greeting can be triggered', () => {
   const scenario = demoScenarios.find(s => s.id === 'right-restraint')!;
-  assert.ok(scenario.followUp);
-  const result = policyFor([...scenario.events, ...scenario.followUp.events]);
+  const result = policyFor(scenario.events);
   assert.equal(result.allowed, false);
   assert.equal(result.rule, 'NOT_ASSIST');
 });
 
-test('electronics versions of the scenarios behave like the Wanderly ones', () => {
+test('electronics retains invitation and withdrawal behavior without a live chat', () => {
   for (const scenario of demoScenarios) {
     const before = adaptEvents(electronicsAdapter, scenario.electronics.events, 's');
     const context = buildJourneyContext(before);

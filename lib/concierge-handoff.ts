@@ -11,9 +11,9 @@ export const conciergePriorities = ['BUDGET', 'ACTIVITIES', 'TRIP_LENGTH'] as co
 export type ConciergePriority = typeof conciergePriorities[number];
 
 /**
- * Context passed from the activation plugin to the brand concierge.
- * `observedSignals` are facts seen in the journey; the concierge must not treat
- * them as conclusions about the visitor's state of mind.
+ * Locally stored invitation context. The Adobe connector does not send this
+ * payload to Brand Concierge. `observedSignals` are facts, not conclusions
+ * about the visitor's state of mind.
  */
 export type ConciergeHandoff = {
   version: 1;
