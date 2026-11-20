@@ -57,7 +57,7 @@ export default function BrandConcierge() {
     }
 
     async function initialize() {
-      await loadScript('/style-config-Nitin2adobe.js');
+      await loadScript(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/style-config-Nitin2adobe.js`);
       if (!active) return;
       if (!window.alloy) {
         (window.__alloyNS = window.__alloyNS || []).push('alloy');
