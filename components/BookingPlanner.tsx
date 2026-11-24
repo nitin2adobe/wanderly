@@ -28,8 +28,13 @@ function BookingForm({ initialDestination, initialPackage }: { initialDestinatio
   const choices = getPackagesForDestination(destinationSlug);
   const today = new Date();
   const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const progress = (entity?: string) => {
-    track(started.current ? 'BOOKING_STEP' : 'BOOKING_START', window.location.pathname, entity);
+  const progress = (entity?: string, selection: { destinationSlug: string; packageId: string } = { destinationSlug, packageId }) => {
+    const selected = getBookingSelection(selection.destinationSlug, selection.packageId);
+    if (!selected) throw new Error('Unsupported trip selection.');
+    track(started.current ? 'BOOKING_STEP' : 'BOOKING_START', window.location.pathname, entity, {
+      destinationSlug: selected.destination.slug,
+      ...(selected.pack ? { packageId: selected.pack.id } : {}),
+    });
     started.current = true;
   };
   if (!destination) return <div className="notice" role="alert">This destination is unavailable. <Link href="/booking">Start a new plan</Link></div>;
@@ -47,8 +52,8 @@ function BookingForm({ initialDestination, initialPackage }: { initialDestinatio
   return <div className="booking">
     {step === 'plan' ? <form className="panel" onSubmit={event => { event.preventDefault(); progress('review-request'); setStep('review'); }}>
       <div className="eyebrow">Step 1 / Your preferences</div><h2 className="contentHeading">Make it your trip.</h2>
-      <div className="field"><label htmlFor="booking-destination">Destination</label><select id="booking-destination" value={destinationSlug} onChange={event => { setDestinationSlug(event.target.value); setPackageId(''); progress(event.target.value); }}>{destinations.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></div>
-      <div className="field"><label htmlFor="booking-package">Journey</label><select id="booking-package" value={packageId} onChange={event => { setPackageId(event.target.value); const selected = getPackage(event.target.value); if (selected) setPace(selected.pace); progress(event.target.value || 'tailored-journey'); }}><option value="">Help me tailor a journey</option>{choices.map(item => <option key={item.id} value={item.id}>{item.packageName} / {item.days} / {item.price}</option>)}</select></div>
+      <div className="field"><label htmlFor="booking-destination">Destination</label><select id="booking-destination" value={destinationSlug} onChange={event => { setDestinationSlug(event.target.value); setPackageId(''); progress(event.target.value, { destinationSlug: event.target.value, packageId: '' }); }}>{destinations.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></div>
+      <div className="field"><label htmlFor="booking-package">Journey</label><select id="booking-package" value={packageId} onChange={event => { setPackageId(event.target.value); const selected = getPackage(event.target.value); if (selected) setPace(selected.pace); progress(event.target.value || 'tailored-journey', { destinationSlug, packageId: event.target.value }); }}><option value="">Help me tailor a journey</option>{choices.map(item => <option key={item.id} value={item.id}>{item.packageName} / {item.days} / {item.price}</option>)}</select></div>
       <div className="field"><label htmlFor="booking-date">Preferred departure date</label><input id="booking-date" type="date" required min={minDate} value={date} onChange={event => { setDate(event.target.value); track('DATE_SEARCH', window.location.pathname); progress('departure-date'); }}/></div>
       <div className="field"><label htmlFor="booking-travellers">Travellers</label><select id="booking-travellers" value={travellers} onChange={event => { setTravellers(event.target.value); progress('travellers'); }}>{['1 adult', '2 adults', '2 adults + 1 child', '4 adults'].map(value => <option key={value}>{value}</option>)}</select></div>
       <div className="field"><label htmlFor="booking-pace">Preferred trip pace</label><select id="booking-pace" value={pace} onChange={event => {

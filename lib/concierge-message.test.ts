@@ -41,6 +41,54 @@ test('welcome alternatives follow trusted package names and the active compariso
   assert.doesNotMatch(compare?.welcomeExamples.join(' ') ?? '', /Bali|Japan|unknown-input/);
 });
 
+test('direct booking links override older packages and support package-only and default selections', () => {
+  const events = journeyEvents([['DESTINATION_VIEW', 'bali'], ['PACKAGE_VIEW', 'island-rhythm']]);
+  for (const query of ['?destination=japan&package=cities-seasons', '?package=cities-seasons']) {
+    const suggestion = manualConciergeSuggestion(events, '/booking', query);
+    assert.match(suggestion?.initialMessage ?? '', /Cities & Seasons/);
+    assert.doesNotMatch(suggestion?.initialMessage ?? '', /Island Rhythm|Bali/);
+    assert.ok(suggestion?.welcomeExamples.every(question => question.includes('Japan')));
+  }
+  assert.equal(conciergePageDestination('/booking')?.slug, 'maldives');
+  assert.match(manualConciergeSuggestion([], '/booking')?.initialMessage ?? '', /Maldives/);
+});
+
+test('booking edits use validated current-visit selections, clear deselected packages and reset on a new visit', () => {
+  const edits = journeyEvents([['PAGE_VIEW'], ['BOOKING_STEP']]).map(event => ({
+    ...event, page: '/booking?destination=japan&package=cities-seasons',
+    ...(event.eventType === 'BOOKING_STEP' ? { metadata: { destinationSlug: 'bali', packageId: 'island-rhythm' } } : {}),
+  }));
+  const selected = manualConciergeSuggestion(edits, '/booking', '?destination=japan&package=cities-seasons');
+  assert.match(selected?.initialMessage ?? '', /Island Rhythm/);
+  assert.doesNotMatch(selected?.welcomeExamples.join(' ') ?? '', /Japan/);
+  const cleared = [...edits, { ...edits[1], metadata: { destinationSlug: 'bali' } }];
+  assert.match(manualConciergeSuggestion(cleared, '/booking', '?destination=japan')?.initialMessage ?? '', /package options for Bali/);
+  const newVisit = [...edits, { ...edits[0], page: '/booking?destination=japan&package=japan-food-trails' }];
+  assert.match(manualConciergeSuggestion(newVisit, '/booking', '?destination=japan&package=japan-food-trails')?.initialMessage ?? '', /Japan Food Trails/);
+  const invalid = [...edits, { ...edits[0] }, { ...edits[1], metadata: { destinationSlug: 'private-input', packageId: 'island-rhythm' } }];
+  assert.match(manualConciergeSuggestion(invalid, '/booking', '?destination=japan&package=cities-seasons')?.initialMessage ?? '', /Cities & Seasons/);
+  assert.equal(manualConciergeSuggestion(edits, '/booking', '?destination=unknown'), undefined);
+});
+
+test('unscoped manual openings respect the current shortlist and an empty comparison does not resurrect old destinations', () => {
+  const events = journeyEvents([['DESTINATION_VIEW', 'bali'], ['PACKAGE_VIEW', 'island-rhythm'], ['COMPARE_ADD', 'portugal'], ['COMPARE_ADD', 'thailand']]);
+  const suggestion = manualConciergeSuggestion(events, '/', '', ['portugal', 'thailand']);
+  assert.match(suggestion?.initialMessage ?? '', /compare Portugal and Thailand/);
+  assert.doesNotMatch(suggestion?.welcomeExamples.join(' ') ?? '', /Bali|Island Rhythm/);
+  const single = manualConciergeSuggestion(events, '/compare', '', ['thailand']);
+  assert.ok(single?.welcomeExamples.length);
+  assert.ok(single?.welcomeExamples.every(question => question.includes('Thailand')));
+  assert.equal(manualConciergeSuggestion(events, '/compare', '', []), undefined);
+});
+
+test('an explicitly chosen priority can personalize an otherwise fresh session without inventing destinations', () => {
+  const events = journeyEvents([['ASSISTANCE_PREFERENCE']]).map(event => ({ ...event, metadata: { priority: 'BUDGET' } }));
+  const suggestion = manualConciergeSuggestion(events, '/');
+  assert.match(suggestion?.initialMessage ?? '', /explicitly chosen priority is budget/);
+  assert.match(suggestion?.explanation ?? '', /priority you explicitly chose/);
+  assert.doesNotMatch(suggestion?.initialMessage ?? '', /Bali|Maldives|Japan/);
+});
+
 test('suggested questions are neutral, contextual and do not impersonate a typed visitor request', () => {
   const comparison = conciergeOpeningMessage(handoff('DESTINATION_COMPARISON', ['Bali', 'Maldives']));
   assert.equal(comparison, 'Help compare Bali and Maldives by trip style, travel logistics and trade-offs.');

@@ -163,7 +163,7 @@ export default function BrandConcierge() {
     }
     setStatus('loading');
     try {
-      const result = await client.open(initialMessage, signal, options.automatic === true, context ? context.welcomeExamples : defaultConciergeWelcomeExamples());
+      const result = await client.open(initialMessage, signal, options.automatic === true, context?.welcomeExamples.length ? context.welcomeExamples : defaultConciergeWelcomeExamples());
       if (clientRef.current !== client || sequence !== openSequence.current) return { status: 'cancelled' };
       if (result.status !== 'cancelled') setStatus('ready');
       else {
