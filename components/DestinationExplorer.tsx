@@ -1,12 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DestinationCard from '@/components/DestinationCard';
 import { destinations, filterDestinations } from '@/lib/data';
 
 const moods = ['All', ...new Set(destinations.flatMap(destination => destination.vibe))];
 
-export default function DestinationExplorer({ initialSearch = '' }: { initialSearch?: string }) {
+export default function DestinationExplorer() {
+  const searches = useSearchParams().getAll('search');
+  const search = searches.length === 1 ? searches[0] : '';
+  return <DestinationFilters key={search} initialSearch={search}/>;
+}
+
+function DestinationFilters({ initialSearch }: { initialSearch: string }) {
   const [search, setSearch] = useState(initialSearch);
   const [mood, setMood] = useState('All');
   const visible = filterDestinations(search, mood);

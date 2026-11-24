@@ -1,11 +1,21 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { destinations, getDestination, getPackage, getPackagesForDestination } from '@/lib/data';
+import { destinations, getBookingSelection, getDestination, getPackage, getPackagesForDestination } from '@/lib/data';
 import { track } from '@/lib/tracking';
 
-export default function BookingPlanner({ initialDestination, initialPackage }: { initialDestination: string; initialPackage?: string }) {
+export default function BookingPlanner() {
+  const searchParams = useSearchParams();
+  const destinationValues = searchParams.getAll('destination');
+  const packageValues = searchParams.getAll('package');
+  const selection = getBookingSelection(destinationValues.length === 1 ? destinationValues[0] : undefined, packageValues.length === 1 ? packageValues[0] : undefined);
+  return selection ? <BookingForm key={`${selection.destination.slug}-${selection.pack?.id ?? ''}`} initialDestination={selection.destination.slug} initialPackage={selection.pack?.id}/> :
+    <div className="notice" role="alert">This trip selection is unavailable or the package does not match the destination. <Link href="/packages">Choose a journey from the catalog</Link>.</div>;
+}
+
+function BookingForm({ initialDestination, initialPackage }: { initialDestination: string; initialPackage?: string }) {
   const [destinationSlug, setDestinationSlug] = useState(initialDestination);
   const [packageId, setPackageId] = useState(initialPackage ?? '');
   const [date, setDate] = useState('');

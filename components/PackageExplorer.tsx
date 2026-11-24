@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PackageCard from '@/components/PackageCard';
-import { destinations, filterPackages } from '@/lib/data';
+import { destinations, filterPackages, getDestination } from '@/lib/data';
 
-export default function PackageExplorer({ initialDestination = 'all' }: { initialDestination?: string }) {
-  const destination = initialDestination;
+export default function PackageExplorer() {
+  const selections = useSearchParams().getAll('destination');
+  const destination = selections.length === 1 ? selections[0] : 'all';
   const pathname = usePathname();
   const router = useRouter();
   const setDestination = (slug: string) => {
@@ -18,6 +20,7 @@ export default function PackageExplorer({ initialDestination = 'all' }: { initia
   };
   const [pace, setPace] = useState('All');
   const [maxPrice, setMaxPrice] = useState(5000);
+  if (destination !== 'all' && !getDestination(destination)) return <div className="notice" role="alert">That destination is not in our sample catalog. <Link href="/packages">Browse all packages</Link></div>;
   const visible = filterPackages(destination, pace, maxPrice);
   return <div>
     <div className="contentFilters">
