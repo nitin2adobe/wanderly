@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { brandIdForPath } from '@/lib/brand-config';
-import { adobeConnector, CONCIERGE_OPEN_EVENT, CONCIERGE_CLOSE_EVENT, isHiddenConciergeRoute, type ConciergeOpenOptions } from '@/lib/concierge-connector';
-import { createConciergeClient, type ConciergeBootstrapOptions } from '@/lib/brand-concierge-client';
+import { adobeConnector, CONCIERGE_OPEN_EVENT, CONCIERGE_CLOSE_EVENT, isHiddenConciergeRoute, type ConciergeOpenOptions, type ConciergeOpenRequest } from '@/lib/concierge-connector';
+import { createConciergeClient, withConciergeSuggestion, type ConciergeBootstrapOptions, type ConciergeOpenResult } from '@/lib/brand-concierge-client';
 import { isForwardProgress } from '@/lib/assistance-policy';
 import { buildJourneyContext } from '@/lib/journey-context';
-import { getEvents, getSessionId } from '@/lib/tracking';
+import { getEvents, getSessionId, track } from '@/lib/tracking';
+import { createConciergeEventRouter } from '@/lib/concierge-observer';
+import { manualConciergeSuggestion } from '@/lib/concierge-context';
+import { getComparisonSlugs } from '@/components/DestinationComparison';
 
 declare global {
   interface Window {
@@ -26,7 +29,12 @@ export default function BrandConcierge() {
   const windowRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<ReturnType<typeof createConciergeClient> | null>(null);
+  const observerRef = useRef<{ sessionId: string; router: ReturnType<typeof createConciergeEventRouter> } | undefined>(undefined);
+  const openSequence = useRef(0);
+  const [suggestion, setSuggestion] = useState<ConciergeOpenOptions | null>(null);
+  const [copyStatus, setCopyStatus] = useState('');
   const pathname = usePathname();
+  const destinationParam = useSearchParams().get('destination');
   const chatAvailable = pathname !== '/demo/live' && adobeConnector.supportsBrand(brandIdForPath(pathname));
   const [initializeClient, setInitializeClient] = useState(chatAvailable);
 
@@ -91,15 +99,20 @@ export default function BrandConcierge() {
     const client = createConciergeClient({
       ready,
       mount,
-      bootstrap: onEvent => window.adobe.concierge.bootstrap({
+      legacyAutoSubmit: process.env.NEXT_PUBLIC_BC_LEGACY_AUTO_SUBMIT === 'true',
+      onEvent: event => {
+        const observer = observerRef.current;
+        if (observer?.sessionId === getSessionId()) observer.router.receive(event);
+      },
+      bootstrap: (onEvent, question) => window.adobe.concierge.bootstrap({
         instanceName: 'alloy',
-        stylingConfigurations: window.styleConfiguration,
+        stylingConfigurations: withConciergeSuggestion(window.styleConfiguration, question),
         selector: '#brand-concierge-mount',
         onEvent,
       }),
-      canOpen: initialMessage => {
+      canOpen: (_initialMessage, automatic) => {
         if (!active || !isOpenRef.current || window.location.pathname === '/demo/live' || !adobeConnector.supportsBrand(brandIdForPath(window.location.pathname))) return false;
-        if (!initialMessage) return true;
+        if (!automatic) return true;
         const events = getEvents().filter(event => event.sessionId === getSessionId());
         return !isHiddenConciergeRoute(window.location.pathname) && !isForwardProgress(buildJourneyContext(events));
       },
@@ -118,52 +131,99 @@ export default function BrandConcierge() {
     };
   }, [initializeClient]);
 
-  const openChat = (initialMessage?: string) => {
+  const openChat = async (options: ConciergeOpenOptions = {}): Promise<ConciergeOpenResult> => {
+    const sequence = ++openSequence.current;
+    const { signal, activationId } = options;
+    const sessionId = getSessionId();
+    const context = options.initialMessage ? undefined : manualConciergeSuggestion(getEvents().filter(event => event.sessionId === sessionId), window.location.pathname, window.location.search, getComparisonSlugs());
+    const initialMessage = options.initialMessage ?? context?.initialMessage;
+    if (signal?.aborted) return { status: 'cancelled' };
+    setSuggestion(initialMessage ? { ...context, ...options, initialMessage } : null);
+    setCopyStatus('');
+    if (activationId) {
+      const request = getEvents().find(event => event.eventType === 'ASSISTANCE_REQUESTED' && event.metadata?.activationId === activationId);
+      const assistanceType = typeof request?.metadata?.assistanceType === 'string' ? request.metadata.assistanceType : 'UNKNOWN';
+      if (observerRef.current?.sessionId !== sessionId) {
+        observerRef.current = {
+          sessionId,
+          router: createConciergeEventRouter((type, metadata) => {
+            if (getSessionId() === sessionId) track(type, window.location.pathname, undefined, metadata);
+          }),
+        };
+      }
+      observerRef.current.router.begin({ activationId, assistanceType, question: initialMessage });
+    }
     isOpenRef.current = true;
     setIsOpen(true);
     const client = clientRef.current;
     if (!client) {
       console.error('Adobe Brand Concierge is not initialized.');
       setStatus('error');
-      return;
+      throw new Error('Adobe Brand Concierge is not initialized.');
     }
     setStatus('loading');
-    client.open(initialMessage).then(opened => {
-      if (clientRef.current !== client) return;
-      if (opened) setStatus('ready');
+    try {
+      const result = await client.open(initialMessage, signal, options.automatic === true);
+      if (clientRef.current !== client || sequence !== openSequence.current) return { status: 'cancelled' };
+      if (result.status !== 'cancelled') setStatus('ready');
       else {
         isOpenRef.current = false;
         setIsOpen(false);
       }
-    }, error => {
-      if (clientRef.current !== client) return;
+      return result;
+    } catch (error) {
+      if (clientRef.current !== client || sequence !== openSequence.current) return { status: 'cancelled' };
       console.error('Unable to open Adobe Brand Concierge:', error);
       setStatus('error');
-    });
+      if (activationId) {
+        isOpenRef.current = false;
+        setIsOpen(false);
+      }
+      throw error;
+    }
   };
   const openChatRef = useRef(openChat);
   openChatRef.current = openChat;
 
+  useEffect(() => {
+    if (!isOpenRef.current || isHiddenConciergeRoute(pathname)) return;
+    clientRef.current?.cancel();
+    void openChatRef.current({ automatic: false }).catch(error => console.error('Unable to refresh the current destination question:', error));
+  }, [pathname, destinationParam]);
+
   const closeChat = () => {
-    isOpenRef.current = false;
-    setIsOpen(false);
     window.dispatchEvent(new Event(CONCIERGE_CLOSE_EVENT));
-    launcherRef.current?.focus();
   };
 
   useEffect(() => {
     const onOpen = (event: Event) => {
       if (window.location.pathname === '/demo/live' || !adobeConnector.supportsBrand(brandIdForPath(window.location.pathname))) return;
       event.preventDefault();
-      const options = event instanceof CustomEvent ? event.detail as ConciergeOpenOptions | undefined : undefined;
-      openChatRef.current(typeof options?.initialMessage === 'string' ? options.initialMessage : undefined);
+      const options = event instanceof CustomEvent ? event.detail as ConciergeOpenRequest | undefined : undefined;
+      openChatRef.current(options).then(result => options?.resolve?.(result), error => {
+        if (options?.reject) options.reject(error instanceof Error ? error : new Error('Unable to open chat.'));
+        else console.error('Unable to open Brand Concierge manually:', error);
+      });
+    };
+    const onClose = () => {
+      openSequence.current++;
+      clientRef.current?.cancel();
+      isOpenRef.current = false;
+      setIsOpen(false);
+      setSuggestion(null);
+      launcherRef.current?.focus();
     };
     window.addEventListener(CONCIERGE_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(CONCIERGE_OPEN_EVENT, onOpen);
+    window.addEventListener(CONCIERGE_CLOSE_EVENT, onClose);
+    return () => {
+      window.removeEventListener(CONCIERGE_OPEN_EVENT, onOpen);
+      window.removeEventListener(CONCIERGE_CLOSE_EVENT, onClose);
+    };
   }, []);
 
   useEffect(() => {
     if (!chatAvailable) {
+      clientRef.current?.cancel();
       isOpenRef.current = false;
       setIsOpen(false);
     }
@@ -192,7 +252,10 @@ export default function BrandConcierge() {
         aria-expanded={isOpen}
         aria-controls="brand-concierge-window"
         title={isOpen ? 'Close chat' : 'Chat with Wanderly'}
-        onClick={() => isOpen ? closeChat() : openChat()}
+        onClick={() => {
+          if (isOpen) closeChat();
+          else openChat().catch(error => console.error('Unable to open Brand Concierge manually:', error));
+        }}
       >
         {isOpen ? (
           <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -216,6 +279,22 @@ export default function BrandConcierge() {
         inert={!isOpen || !chatAvailable}
         tabIndex={-1}
       >
+        {suggestion?.initialMessage && <div className="brandConciergeContext">
+          <strong>Suggested by Wanderly, based on your browsing</strong>
+          <p>{process.env.NEXT_PUBLIC_BC_LEGACY_AUTO_SUBMIT === 'true' && suggestion.automatic ? 'Experimental mode: Wanderly may submit this browsing-based question automatically. It was not typed by you.' : suggestion.explanation ?? 'You can choose this suggested question or ask something else. It was not typed by you.'}</p>
+          <p>{suggestion.initialMessage}</p>
+          <button type="button" className="btn ghost" onClick={async () => {
+            try {
+              if (!suggestion.initialMessage) throw new Error('No suggested question is available.');
+              await navigator.clipboard.writeText(suggestion.initialMessage);
+              setCopyStatus('Copied. Paste into chat and send when you are ready.');
+            } catch (error) {
+              console.error('Unable to copy the suggested question:', error);
+              setCopyStatus('Copy failed. Select the question text and copy it manually.');
+            }
+          }}>Copy question for chat</button>
+          <span role="status">{copyStatus}</span>
+        </div>}
         <div ref={mountRef} id="brand-concierge-mount" />
         {status === 'loading' && <div className="brandConciergeStatus" role="status">Connecting to Brand Concierge...</div>}
         {status === 'error' && (

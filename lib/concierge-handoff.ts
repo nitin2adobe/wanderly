@@ -20,6 +20,8 @@ export type ConciergeHandoff = {
   brand: string;
   intent: ConciergeIntent;
   entities: string[];
+  /** Approved FAQ wording, never free-form visitor input. */
+  topic?: string;
   observedSignals: string[];
   explicitPreferences: { priority?: ConciergePriority };
   entryPoint: 'proactive_invitation';
@@ -68,6 +70,7 @@ export function validateHandoff(value: unknown): ValidationResult<ConciergeHando
   if (typeof h.brand !== 'string' || !h.brand.trim()) errors.push('brand must be a non-empty string.');
   if (!conciergeIntents.includes(h.intent as ConciergeIntent)) errors.push('intent must be a specific assistance type.');
   if (!isStringArray(h.entities, MAX_TEXT_LENGTH)) errors.push(`entities must be strings up to ${MAX_TEXT_LENGTH} characters.`);
+  if (h.topic !== undefined && (typeof h.topic !== 'string' || !h.topic.trim() || h.topic.length > MAX_TEXT_LENGTH)) errors.push('topic must be a non-empty string up to 240 characters.');
   if (!isStringArray(h.observedSignals, MAX_SIGNAL_LENGTH)) errors.push(`observedSignals must be strings up to ${MAX_SIGNAL_LENGTH} characters.`);
   if (h.entryPoint !== 'proactive_invitation') errors.push('entryPoint must be "proactive_invitation".');
   if (typeof h.sessionId !== 'string' || !h.sessionId) errors.push('sessionId must be a non-empty string.');

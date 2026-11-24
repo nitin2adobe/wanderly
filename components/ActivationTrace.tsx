@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACTIVATION_MODE_CHANGED, getActivationMode, setActivationMode, type ActivationMode } from '@/lib/activation-mode';
 import { decideAssistance } from '@/lib/assistance-decision';
-import { summariseOutcomes } from '@/lib/assistance-outcomes';
+import { recordedActivationProposal } from '@/lib/activation-proposal';
+import { conciergeMetrics, summariseOutcomes } from '@/lib/assistance-outcomes';
 import { deriveMemory } from '@/lib/assistance-memory';
 import { evaluatePolicy } from '@/lib/assistance-policy';
 import type { ConciergeHandoff } from '@/lib/concierge-handoff';
@@ -14,21 +15,27 @@ import { buildJourneyContext } from '@/lib/journey-context';
 /** Live view of decision -> policy -> invitation -> outcome for one session's events. */
 export default function ActivationTrace({ events, showHandoff = true }: { events: WanderlyEvent[]; showHandoff?: boolean }) {
   const options = usePolicyOptions();
+  const [mode, setMode] = useState<ActivationMode>('rules');
   const context = useMemo(() => buildJourneyContext(events), [events]);
-  const decision = useMemo(() => decideAssistance(context), [context]);
-  const policy = useMemo(() => evaluatePolicy(decision, context, events, new Date(), options), [decision, context, events, options]);
-  const lifecycle = events.filter(e => e.eventType.startsWith('ASSISTANCE_'));
+  const proposal = recordedActivationProposal(events, context, mode === 'ai');
+  const decision = proposal?.decision ?? (mode === 'rules' ? decideAssistance(context) : undefined);
+  const policy = decision ? evaluatePolicy(decision, context, events, new Date(), options) : undefined;
+  const lifecycle = events.filter(e => e.eventType.startsWith('ASSISTANCE_') && e.eventType !== 'ASSISTANCE_EVALUATED');
   const status = lifecycle.filter(e => e.eventType !== 'ASSISTANCE_PREFERENCE').at(-1)?.eventType;
   const outcomes = summariseOutcomes(events);
+  const metrics = conciergeMetrics(events);
   const memory = useMemo(() => deriveMemory(events), [events]);
   const handoff = [...lifecycle].reverse().map(e => e.metadata?.handoff as ConciergeHandoff | undefined).find(Boolean);
-  const stage = status === 'ASSISTANCE_TRIGGERED' ? 'Automatically opened — contextual question sent' : status === 'ASSISTANCE_SHOWN' ? 'Balloon visible' : status === 'ASSISTANCE_ACCEPTED' ? 'Accepted — chat requested' : status === 'ASSISTANCE_DISMISSED' ? 'Dismissed' : 'No invitation yet';
-  const [mode, setMode] = useState<ActivationMode>('rules');
+  const stage = status?.replace('ASSISTANCE_', '').replaceAll('_', ' ') ?? 'No invitation yet';
   useEffect(() => {
     const sync = () => setMode(getActivationMode());
     sync();
     window.addEventListener(ACTIVATION_MODE_CHANGED, sync);
-    return () => window.removeEventListener(ACTIVATION_MODE_CHANGED, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(ACTIVATION_MODE_CHANGED, sync);
+      window.removeEventListener('storage', sync);
+    };
   }, []);
 
   return (
@@ -41,11 +48,11 @@ export default function ActivationTrace({ events, showHandoff = true }: { events
         </div>
       </div>
       <div className="traceSteps">
-        <div><span>1 · Decision</span><strong>{decision.decision}{decision.assistanceType !== 'NONE' ? ` · ${decision.assistanceType.replaceAll('_', ' ')}` : ''}</strong></div>
-        <div><span>2 · Policy gate</span><strong className={policy.allowed ? 'traceAllowed' : 'traceBlocked'}>{policy.allowed ? 'ALLOWED' : 'BLOCKED'} · {policy.rule}</strong><small>{policy.reason}</small></div>
+        <div><span>1 · Active decision</span><strong>{decision ? `${decision.decision}${decision.assistanceType !== 'NONE' ? ` · ${decision.assistanceType.replaceAll('_', ' ')}` : ''}` : 'Awaiting active evaluation'}</strong><small>{proposal ? `Used by plugin · ${proposal.source}` : mode === 'ai' ? 'The rules baseline does not control AI-assisted activation.' : 'Rules preview; awaiting plugin evaluation.'}</small></div>
+        <div><span>2 · Current policy gate</span><strong className={policy?.allowed ? 'traceAllowed' : 'traceBlocked'}>{policy ? `${policy.allowed ? 'ALLOWED' : 'BLOCKED'} · ${policy.rule}` : 'Awaiting active evaluation'}</strong><small>{policy?.reason}</small></div>
         <div><span>3 · Invitation</span><strong>{stage}</strong></div>
       </div>
-      <div className="eyebrow" style={{ marginTop: 16 }}>Decision after each signal</div>
+      <div className="eyebrow" style={{ marginTop: 16 }}>Rules baseline after each signal</div>
       <SignalTimeline events={events} options={options} />
       {lifecycle.length > 0 && (
         <div className="journeyChips">
@@ -56,6 +63,16 @@ export default function ActivationTrace({ events, showHandoff = true }: { events
       {outcomes.length
         ? <div className="journeyChips">{outcomes.map((o, i) => <span key={i}>{o.assistanceType.replaceAll('_', ' ')} · {o.response.replace('_', ' ')}{o.priority ? ` · priority ${o.priority}` : ''} · {o.progressedAfter ? 'progressed after' : 'no progression yet'}</span>)}</div>
         : <p className="muted">No invitations in this session.</p>}
+      <div className="eyebrow" style={{ marginTop: 16 }}>Acknowledged BC delivery and engagement</div>
+      <div className="journeyChips">
+        <span>Requested: {metrics.requested}</span><span>Opened: {metrics.opened}</span>
+        <span>Opening failures: {metrics.openingFailures}</span><span>Cancelled: {metrics.cancelled}</span>
+        <span>Queries: {metrics.queries}</span><span>Completed responses: {metrics.completedResponses}</span>
+        <span>Service errors: {metrics.serviceErrors}</span>
+        <span>Feedback: {metrics.positiveFeedback} positive / {metrics.negativeFeedback} negative</span>
+        <span>Average observed streaming: {metrics.averageStreamingMs === null ? 'not measured' : `${metrics.averageStreamingMs} ms`}</span>
+      </div>
+      <p className="muted">Opened is not submitted or resolved. Response completion does not prove answer correctness. Streaming time is not total query latency. Events are local to this browser; progression is correlation, not uplift.</p>
       <div className="eyebrow" style={{ marginTop: 16 }}>Session memory (used by the next decision)</div>
       <div className="journeyChips">
         <span>Visitor dismissals: {memory.visitorDismissals}{memory.visitorDismissals >= 2 ? ' → stopped' : memory.visitorDismissals === 1 ? ' → cooldown doubles' : ''}</span>
@@ -65,7 +82,7 @@ export default function ActivationTrace({ events, showHandoff = true }: { events
       {showHandoff && (
         <>
           <div className="eyebrow" style={{ marginTop: 16 }}>Invitation payload (local only)</div>
-          <p className="muted">Only the intent, catalog names and any chosen priority are sent to Adobe Brand Concierge, as a first-person opening question. The session ID and raw events are not sent. Automatic activation is not visitor acceptance.</p>
+          <p className="muted">Only an approved suggested question (current catalog names, practical topic and any explicitly chosen priority) enters the Adobe client. The local session ID and raw events are not forwarded in the question. Default delivery requires visitor submission; legacy automatic submission is opt-in. BC knowledge must be published separately.</p>
           {handoff ? <pre className="handoffJson">{JSON.stringify(handoff, null, 2)}</pre> : <p className="muted">No handoff yet. A payload is created when an invitation is shown.</p>}
         </>
       )}

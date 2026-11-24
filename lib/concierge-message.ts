@@ -2,50 +2,42 @@ import { formatList } from './assistance-copy.ts';
 import type { ConciergeHandoff, ConciergePriority } from './concierge-handoff.ts';
 
 export const MAX_OPENING_MESSAGE_LENGTH = 240;
-const MAX_ENTITIES = 3;
-const FALLBACK_MESSAGE = 'Hi';
-
 const priorityClause: Record<ConciergePriority, string> = {
-  BUDGET: 'My main priority is budget.',
-  ACTIVITIES: 'My main priority is things to do.',
-  TRIP_LENGTH: 'My main priority is trip length.',
+  BUDGET: 'The explicitly chosen priority is budget.',
+  ACTIVITIES: 'The explicitly chosen priority is things to do.',
+  TRIP_LENGTH: 'The explicitly chosen priority is trip length.',
 };
-
 const cleanEntities = (entities: string[]) =>
-  [...new Set(entities.map(entity => entity.replace(/[^\p{L}\p{N} &'-]/gu, '').replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, MAX_ENTITIES);
+  [...new Set(entities.map(entity => entity.replace(/[^\p{L}\p{N} &'-]/gu, '').replace(/\s+/g, ' ').trim()).filter(Boolean))].slice(0, 3);
 
-function intentMessage(intent: ConciergeHandoff['intent'], entities: string[], destinations: string[] = []): string {
+function intentMessage(handoff: Pick<ConciergeHandoff, 'intent' | 'topic'>, entities: string[], destinations: string[]) {
   const list = formatList(entities);
-  switch (intent) {
+  switch (handoff.intent) {
     case 'DESTINATION_COMPARISON':
-      return entities.length > 1
-        ? `I'm comparing ${list}. Can you help me decide which suits me better?`
-        : "I'm trying to choose a destination. Can you help me narrow it down?";
+      return entities.length > 1 ? `Help compare ${list} by trip style, travel logistics and trade-offs.` :
+        list ? `Help explore ${list} by trip style, travel logistics and trade-offs.` : 'Help narrow down a destination by trip style and travel logistics.';
     case 'PACKAGE_SELECTION':
-      if (entities.length > 1) return `I'm looking at the ${list} packages. What's the difference?`;
-      if (list) return `I'm looking at the ${list} package. Are there other options I should consider?`;
-      // Package-selection entities are package names; with none viewed, ask about the destinations instead.
-      return destinations.length ? `Are there other packages for ${formatList(destinations)}?` : 'Can you help me choose a travel package?';
+      return list ? `Help compare ${list} by nights, pace, inclusions and illustrative price.` :
+        destinations.length ? `Explain the package options for ${formatList(destinations)} and their trade-offs.` : 'Explain the travel package options and their trade-offs.';
     case 'TRAVEL_INFORMATION':
-      return list ? `I'm planning a trip to ${list}. What should I know before I go?` : "I'm planning a trip. What should I know before I go?";
-    default:
-      return FALLBACK_MESSAGE;
+      return handoff.topic ? `${list ? `For ${list}: ` : ''}${handoff.topic}` :
+        list ? `Explain practical planning considerations for ${list} and what must be verified before travel.` : 'Explain what practical details should be verified before travel.';
   }
 }
 
-/**
- * First-person opening message submitted to Brand Concierge on the visitor's behalf.
- * Built only from catalog entity names, the intent and an explicitly chosen priority — never raw events or identifiers.
- * `destinationsViewed` is used only when a package-selection handoff names no packages.
- */
+/** Suggested question based on browsing, not a claim that the visitor typed it. */
 export function conciergeOpeningMessage(
-  handoff: Pick<ConciergeHandoff, 'intent' | 'entities' | 'explicitPreferences'>,
+  handoff: Pick<ConciergeHandoff, 'intent' | 'entities' | 'explicitPreferences' | 'topic'>,
   destinationsViewed: string[] = [],
 ): string {
-  const base = intentMessage(handoff.intent, cleanEntities(handoff.entities), cleanEntities(destinationsViewed));
-  const priority = handoff.explicitPreferences?.priority;
-  const withPriority = priority && priorityClause[priority] ? `${base} ${priorityClause[priority]}` : base;
-  if (withPriority.length <= MAX_OPENING_MESSAGE_LENGTH) return withPriority;
-  if (base.length <= MAX_OPENING_MESSAGE_LENGTH) return base;
-  return intentMessage(handoff.intent, []);
+  const entities = cleanEntities(handoff.entities);
+  const destinations = cleanEntities(destinationsViewed);
+  // Keep the explicit preference by reducing entity count before dropping useful context.
+  const priority = handoff.explicitPreferences.priority;
+  const suffix = priority && priorityClause[priority] ? ` ${priorityClause[priority]}` : '';
+  for (let count = entities.length; count >= 0; count--) {
+    const base = intentMessage(handoff, entities.slice(0, count), destinations);
+    if (base.length + suffix.length <= MAX_OPENING_MESSAGE_LENGTH) return base + suffix;
+  }
+  return intentMessage({ intent: handoff.intent }, [], []).slice(0, MAX_OPENING_MESSAGE_LENGTH);
 }

@@ -12,6 +12,13 @@ test('page views and session starts are not semantic signals', () => {
   assert.equal(context.potentialFriction, 'NONE');
 });
 
+test('concierge telemetry cannot erase recent date-search progression or contaminate AI context', () => {
+  const context = build([['DESTINATION_VIEW', 'bali'], ['DATE_SEARCH'], ['ASSISTANCE_REQUESTED'], ['ASSISTANCE_OPENED'], ['ASSISTANCE_QUERY_SUBMITTED'], ['ASSISTANCE_RESPONSE_STARTED'], ['ASSISTANCE_RESPONSE_COMPLETED']]);
+  assert.equal(context.journeyProgression, 'POSITIVE');
+  assert.equal(context.semanticEventCount, 2);
+  assert.equal(context.recentJourney.some(item => item.startsWith('ASSISTANCE_')), false);
+});
+
 test('destination switches count only changes between consecutive views', () => {
   const context = build([['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['DESTINATION_VIEW', 'bali']]);
   assert.equal(context.destinationSwitches, 2);
