@@ -9,7 +9,7 @@ import { isForwardProgress } from '@/lib/assistance-policy';
 import { buildJourneyContext } from '@/lib/journey-context';
 import { getEvents, getSessionId, track } from '@/lib/tracking';
 import { createConciergeEventRouter } from '@/lib/concierge-observer';
-import { manualConciergeSuggestion } from '@/lib/concierge-context';
+import { defaultConciergeWelcomeExamples, manualConciergeSuggestion } from '@/lib/concierge-context';
 import { getComparisonSlugs } from '@/components/DestinationComparison';
 
 declare global {
@@ -104,9 +104,9 @@ export default function BrandConcierge() {
         const observer = observerRef.current;
         if (observer?.sessionId === getSessionId()) observer.router.receive(event);
       },
-      bootstrap: (onEvent, question) => window.adobe.concierge.bootstrap({
+      bootstrap: (onEvent, question, examples) => window.adobe.concierge.bootstrap({
         instanceName: 'alloy',
-        stylingConfigurations: withConciergeSuggestion(window.styleConfiguration, question),
+        stylingConfigurations: withConciergeSuggestion(window.styleConfiguration, question, examples),
         selector: '#brand-concierge-mount',
         onEvent,
       }),
@@ -135,7 +135,7 @@ export default function BrandConcierge() {
     const sequence = ++openSequence.current;
     const { signal, activationId } = options;
     const sessionId = getSessionId();
-    const context = options.initialMessage ? undefined : manualConciergeSuggestion(getEvents().filter(event => event.sessionId === sessionId), window.location.pathname, window.location.search, getComparisonSlugs());
+    const context = manualConciergeSuggestion(getEvents().filter(event => event.sessionId === sessionId), window.location.pathname, window.location.search, getComparisonSlugs());
     const initialMessage = options.initialMessage ?? context?.initialMessage;
     if (signal?.aborted) return { status: 'cancelled' };
     setSuggestion(initialMessage ? { ...context, ...options, initialMessage } : null);
@@ -163,7 +163,7 @@ export default function BrandConcierge() {
     }
     setStatus('loading');
     try {
-      const result = await client.open(initialMessage, signal, options.automatic === true);
+      const result = await client.open(initialMessage, signal, options.automatic === true, context ? context.welcomeExamples : defaultConciergeWelcomeExamples());
       if (clientRef.current !== client || sequence !== openSequence.current) return { status: 'cancelled' };
       if (result.status !== 'cancelled') setStatus('ready');
       else {

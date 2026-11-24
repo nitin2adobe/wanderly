@@ -2,13 +2,43 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { conciergeOpeningMessage, MAX_OPENING_MESSAGE_LENGTH } from './concierge-message.ts';
 import { conciergeIntents } from './concierge-handoff.ts';
-import { conciergePageDestination, contextualHandoff, manualConciergeSuggestion } from './concierge-context.ts';
+import { conciergePageDestination, contextualHandoff, defaultConciergeWelcomeExamples, manualConciergeSuggestion } from './concierge-context.ts';
+import { destinations } from './data.ts';
 import type { ConciergeHandoff } from './concierge-handoff.ts';
 import { journeyEvents } from './labelled-journeys.ts';
 
 const handoff = (intent: ConciergeHandoff['intent'], entities: string[] = []): ConciergeHandoff => ({
   version: 1, brand: 'wanderly', intent, entities, explicitPreferences: {},
   observedSignals: [], entryPoint: 'proactive_invitation', sessionId: 's', createdAt: '2026-01-01T00:00:00Z',
+});
+
+test('fresh welcome examples cover the current catalog, including Thailand and Portugal', () => {
+  const examples = defaultConciergeWelcomeExamples();
+  assert.equal(examples.length, destinations.length);
+  assert.ok(destinations.every(destination => examples.some(question => question.includes(destination.name))));
+  assert.ok(examples.some(question => question.includes('Thailand')));
+  assert.ok(examples.some(question => question.includes('Portugal')));
+});
+
+test('Japan welcome alternatives use approved practical questions and exclude stale destinations and raw events', () => {
+  const events = journeyEvents([['DESTINATION_VIEW', 'bali'], ['FAQ_SEARCH', 'bali-entry'], ['FAQ_SEARCH', 'private-freeform-input']]);
+  const suggestion = manualConciergeSuggestion(events, '/travel-info', '?destination=japan', ['bali', 'maldives']);
+  const examples = suggestion?.welcomeExamples ?? [];
+  assert.ok(examples.length >= 2);
+  assert.ok(examples.every(question => question.includes('Japan')));
+  assert.ok(examples.includes('For Japan: How do I check entry requirements for Japan?'));
+  assert.doesNotMatch(examples.join(' '), /Bali|Maldives|private-freeform/);
+});
+
+test('welcome alternatives follow trusted package names and the active comparison shortlist', () => {
+  const events = journeyEvents([['PACKAGE_VIEW', 'island-rhythm'], ['PACKAGE_VIEW', 'cities-seasons']]);
+  const pack = manualConciergeSuggestion(events, '/packages/cities-seasons');
+  assert.ok(pack?.welcomeExamples.some(question => question.includes('Cities & Seasons')));
+  assert.doesNotMatch(pack?.welcomeExamples.join(' ') ?? '', /Island Rhythm|Bali/);
+  const compare = manualConciergeSuggestion(events, '/compare', '', ['portugal', 'thailand', 'unknown-input']);
+  assert.ok(compare?.welcomeExamples.length);
+  assert.ok(compare?.welcomeExamples.every(question => question.includes('Portugal') && question.includes('Thailand')));
+  assert.doesNotMatch(compare?.welcomeExamples.join(' ') ?? '', /Bali|Japan|unknown-input/);
 });
 
 test('suggested questions are neutral, contextual and do not impersonate a typed visitor request', () => {

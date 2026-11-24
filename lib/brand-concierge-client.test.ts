@@ -8,6 +8,7 @@ function fixture({ ready = Promise.resolve(), legacy = false, acknowledge = true
   const attributes = new Map<string, string>();
   const messages: (string | undefined)[] = [];
   const suggestions: (string | undefined)[] = [];
+  const examples: (readonly string[] | undefined)[] = [];
   let onEvent: (event: ConciergeClientEvent) => void = () => {};
   let available = true;
   let failure: Error | undefined;
@@ -15,11 +16,12 @@ function fixture({ ready = Promise.resolve(), legacy = false, acknowledge = true
     ready, legacyAutoSubmit: legacy, timeoutMs,
     mount: { setAttribute: (key, value) => { attributes.set(key, value); }, removeAttribute: key => { attributes.delete(key); } },
     canOpen: () => available,
-    bootstrap: (callback, question) => {
+    bootstrap: (callback, question, welcomeExamples) => {
       onEvent = callback;
       const message = attributes.get('data-initial-message');
       messages.push(message);
       suggestions.push(question);
+      examples.push(welcomeExamples);
       if (failure) throw failure;
       if (acknowledge) {
         const emit = () => callback(legacy && message ? { eventType: 'query:submitted', data: { query: message } } : { eventType: 'webclient:initialized' });
@@ -28,7 +30,7 @@ function fixture({ ready = Promise.resolve(), legacy = false, acknowledge = true
       }
     },
   });
-  return { client, attributes, messages, suggestions, emit: (event: ConciergeClientEvent) => onEvent(event), leavePage: () => { available = false; }, fail: (error?: Error) => { failure = error; } };
+  return { client, attributes, messages, suggestions, examples, emit: (event: ConciergeClientEvent) => onEvent(event), leavePage: () => { available = false; }, fail: (error?: Error) => { failure = error; } };
 }
 
 test('default uses documented welcome suggestions without auto submitting', async () => {
@@ -64,6 +66,27 @@ test('a submitted conversation is preserved when a Japan question replaces an ea
   f.emit({ eventType: 'query:submitted', data: { query: 'Visitor question' } });
   assert.equal((await f.client.open('Explore Japan')).status, 'existing');
   assert.deepEqual(f.suggestions, ['Compare Bali and Maldives']);
+});
+
+test('dynamic example lists retain the primary question, deduplicate and preserve other styling', () => {
+  const config = { arrays: { other: [1], 'welcome.examples': [{ text: 'Old default' }] } };
+  assert.deepEqual(withConciergeSuggestion(config, 'Explore Japan', ['Explore Japan', ' Japan luggage? ', 'Japan entry?', '']), {
+    arrays: { other: [1], 'welcome.examples': [{ text: 'Explore Japan' }, { text: 'Japan luggage?' }, { text: 'Japan entry?' }] },
+  });
+  assert.deepEqual(config.arrays['welcome.examples'], [{ text: 'Old default' }]);
+});
+
+test('changed secondary examples refresh an unsent welcome but preserve a submitted conversation', async () => {
+  const f = fixture();
+  assert.equal((await f.client.open('Explore Japan', undefined, false, ['Japan entry?'])).status, 'opened');
+  assert.equal((await f.client.open('Explore Japan', undefined, false, ['Japan luggage?'])).status, 'opened');
+  assert.equal((await f.client.open('Explore Japan', undefined, false, ['Japan luggage?'])).status, 'existing');
+  f.emit({ eventType: 'query:submitted', data: { query: 'Visitor question' } });
+  assert.equal((await f.client.open('Explore Japan', undefined, false, ['Japan stays?'])).status, 'existing');
+  assert.deepEqual(f.examples, [['Japan entry?'], ['Japan luggage?']]);
+  assert.deepEqual(f.messages, [undefined, undefined]);
+  f.emit({ eventType: 'history:cleared' });
+  assert.equal((await f.client.open('Explore Japan', undefined, false, ['Japan stays?'])).status, 'opened');
 });
 
 test('legacy mode awaits a delayed matching callback and deduplicates concurrent requests', async () => {

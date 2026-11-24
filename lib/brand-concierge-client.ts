@@ -18,11 +18,16 @@ export type ConciergeBootstrapOptions = {
 
 export type ConciergeOpenResult = { status: 'opened' | 'submitted' | 'existing' | 'cancelled' };
 
-export function withConciergeSuggestion(configuration: object | undefined, question?: string): object {
-  if (!question) return configuration ?? {};
+function welcomeQuestions(question?: string, examples: readonly string[] = []): string[] {
+  return [...new Set([question, ...examples].filter((value): value is string => !!value?.trim()).map(value => value.trim()))];
+}
+
+export function withConciergeSuggestion(configuration: object | undefined, question?: string, examples?: readonly string[]): object {
+  const questions = welcomeQuestions(question, examples);
+  if (!questions.length) return configuration ?? {};
   const arrays = configuration && 'arrays' in configuration && configuration.arrays && typeof configuration.arrays === 'object'
     ? configuration.arrays : {};
-  return { ...configuration, arrays: { ...arrays, 'welcome.examples': [{ text: question }] } };
+  return { ...configuration, arrays: { ...arrays, 'welcome.examples': questions.map(text => ({ text })) } };
 }
 
 export function createConciergeClient({
@@ -31,7 +36,7 @@ export function createConciergeClient({
 }: {
   ready: Promise<void>;
   mount: Pick<HTMLElement, 'setAttribute' | 'removeAttribute'>;
-  bootstrap: (onEvent: (event: ConciergeClientEvent) => void, question?: string) => void | Promise<void>;
+  bootstrap: (onEvent: (event: ConciergeClientEvent) => void, question?: string, examples?: readonly string[]) => void | Promise<void>;
   canOpen: (initialMessage: string | undefined, automatic: boolean) => boolean;
   onEvent?: (event: ConciergeClientEvent) => void;
   legacyAutoSubmit?: boolean;
@@ -40,6 +45,7 @@ export function createConciergeClient({
   let queue = Promise.resolve();
   let initialized = false;
   let configuredQuestion: string | undefined;
+  let configuredExamples: string | undefined;
   let hasConversation = false;
   let disposed = false;
   let cancelActive: (() => void) | undefined;
@@ -47,7 +53,9 @@ export function createConciergeClient({
   let cancellationEpoch = 0;
 
   return {
-    open(initialMessage?: string, signal?: AbortSignal, allowAutoSubmit = true): Promise<ConciergeOpenResult> {
+    open(initialMessage?: string, signal?: AbortSignal, allowAutoSubmit = true, examples?: readonly string[]): Promise<ConciergeOpenResult> {
+      const questions = welcomeQuestions(undefined, examples);
+      const examplesKey = JSON.stringify(welcomeQuestions(initialMessage, questions));
       const epoch = cancellationEpoch;
       const request = queue.then(() => new Promise<ConciergeOpenResult>((resolve, reject) => {
         let settled = false;
@@ -88,6 +96,7 @@ export function createConciergeClient({
           } else if (!autoSubmit && event.eventType === 'webclient:initialized') {
             initialized = true;
             configuredQuestion = initialMessage;
+            configuredExamples = examplesKey;
             finish({ status: 'opened' });
           }
         };
@@ -95,14 +104,14 @@ export function createConciergeClient({
         ready.then(async () => {
           if (settled) return;
           if (disposed || epoch !== cancellationEpoch || signal?.aborted || !canOpen(initialMessage, allowAutoSubmit)) { cancel(); return; }
-          if (initialized && (hasConversation || (!autoSubmit && initialMessage === configuredQuestion))) { finish({ status: 'existing' }); return; }
+          if (initialized && (hasConversation || (!autoSubmit && initialMessage === configuredQuestion && examplesKey === configuredExamples))) { finish({ status: 'existing' }); return; }
           if (autoSubmit && blockedMessage === initialMessage) {
             finish(undefined, new Error('The previous submission has an unknown outcome. Continue in the existing chat instead of resending.'));
             return;
           }
           bootstrapping = true;
           if (autoSubmit) mount.setAttribute('data-initial-message', initialMessage);
-          await bootstrap(receive, autoSubmit ? undefined : initialMessage);
+          await bootstrap(receive, autoSubmit ? undefined : initialMessage, questions);
         }).catch(error => finish(undefined, error instanceof Error ? error : new Error('Brand Concierge bootstrap failed.')));
       }));
       queue = request.then(() => undefined, () => undefined);

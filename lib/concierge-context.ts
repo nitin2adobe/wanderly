@@ -54,6 +54,28 @@ function eventDestination(event: WanderlyEvent) {
   if (event.eventType === 'HOTEL_VIEW') return destinations.find(destination => destination.stayStyles.some(stay => stay.name === event.entity));
 }
 
+export function defaultConciergeWelcomeExamples(): string[] {
+  return destinations.map(destination => `Help me explore ${destination.name}.`);
+}
+
+function contextualWelcomeExamples(context: QuestionContext, destinationSlug?: string): string[] {
+  const destination = getDestination(destinationSlug ?? '');
+  const packs = context.intent === 'PACKAGE_SELECTION' ? context.entities.map(getPackage).filter(pack => pack && (!destination || pack.slug === destination.slug)) : [];
+  if (packs.length) return packs.flatMap(pack => pack ? [
+    `What is included in ${pack.packageName} in ${pack.name}?`,
+    `How is the itinerary paced for ${pack.packageName} in ${pack.name}?`,
+  ] : []).slice(0, 3);
+  if (context.intent === 'DESTINATION_COMPARISON' && context.entities.length > 1) {
+    const places = context.entities.join(' and ');
+    return [`Compare stay styles and transfers for ${places}.`, `How do the sample trip lengths differ for ${places}?`, `Which experiences distinguish ${places}?`];
+  }
+  if (destination) return [
+    `Which sample journeys fit a trip to ${destination.name}?`,
+    ...travelFaqs(destination).slice(0, 2).map(faq => `For ${destination.name}: ${faq.question}`),
+  ];
+  return [];
+}
+
 /** Uses approved catalog signals only. Callers supply the current session's events. */
 export function manualConciergeSuggestion(events: WanderlyEvent[], pathname: string, search = '', shortlist: string[] = []) {
   const recent = events.filter(event => !event.eventType.startsWith('ASSISTANCE_') && event.eventType !== 'PAGE_VIEW' && event.eventType !== 'SESSION_START').slice(-8).reverse();
@@ -77,6 +99,7 @@ export function manualConciergeSuggestion(events: WanderlyEvent[], pathname: str
   const { preferredPriority } = deriveMemory(events);
   return {
     initialMessage: conciergeOpeningMessage({ ...context, explicitPreferences: preferredPriority ? { priority: preferredPriority } : {} }, destination ? [destination.name] : []),
+    welcomeExamples: contextualWelcomeExamples(context, destination?.slug),
     explanation: `${stay ? 'Based on the stay details you opened' : activity?.eventType === 'FAQ_SEARCH' ? 'Based on the practical question you opened' : intent === 'PACKAGE_SELECTION' ? 'Based on your recent package and price views' : intent === 'DESTINATION_COMPARISON' ? 'Based on your comparison activity' : 'Based on your recent browsing'}${destination ? ` for ${destination.name}` : ''}. Choose the suggestion in chat to send it; nothing is submitted automatically.`,
   };
 }

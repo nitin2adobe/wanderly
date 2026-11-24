@@ -97,8 +97,22 @@ On comparison and other unscoped pages, questions use active comparison selectio
 otherwise the most-recent catalog
 entities (maximum three); package IDs resolve to actual display names. Recognized
 FAQ events carry the approved practical question rather than generic travel
-wording. Only that question and any explicitly chosen priority enter the SDK
-configuration, not raw events, policy evidence or the local session ID.
+wording. The primary question, approved welcome alternatives and any explicitly
+chosen priority enter the SDK configuration, not raw events, policy evidence or
+the local session ID.
+
+Welcome examples are dynamic catalog/template questions, not LLM-generated text.
+A fresh, unscoped session offers all six current destinations, including Thailand
+and Portugal, overriding the old four-place defaults in the styling file.
+Destination browsing supplies relevant journey and approved FAQ examples;
+package views use actual package names, and comparisons use the trusted shortlist.
+The browsing-based primary question remains first, with duplicate examples removed.
+Examples are recomputed on opening/reopening and destination navigation. Changes
+to secondary examples also refresh an unsent welcome, but submitted conversations
+are never rebootstrapped. Same-page clicks do not continually reset an open input;
+their updated examples appear on reopening. Nothing is automatically submitted.
+Catalog changes reach these examples when the site is rebuilt/deployed; this does
+not automatically update Adobe's external knowledge.
 
 Both rules and AI proposals retain the same policy gate. Opening is asynchronous
 and bounded: `ASSISTANCE_REQUESTED` becomes acknowledged `ASSISTANCE_OPENED`,
