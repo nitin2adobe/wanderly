@@ -12,3 +12,6 @@ export function TrackedButton({eventType,entity,className,children,onClick}:{eve
 export function PackageLink({href,packageSlug,children}:{href:string,packageSlug:string,children:ReactNode}){
  return <Link href={href} onClick={()=>{track('PACKAGE_VIEW',window.location.pathname,packageSlug);track('PRICE_VIEW',window.location.pathname,packageSlug)}}>{children}</Link>
 }
+export function TrackedDetails({eventType,entity,summary,children}:{eventType:WanderlyEventType,entity:string,summary:string,children:ReactNode}){
+ return <details className="contentDetails" onToggle={event=>{if(event.currentTarget.open)track(eventType,window.location.pathname,entity)}}><summary>{summary}</summary><div className="muted">{children}</div></details>
+}

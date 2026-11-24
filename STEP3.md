@@ -4,11 +4,12 @@ This iteration adds an explainable baseline decision engine on top of the Step 2
 
 ## Current pipeline
 
-Wanderly events -> Journey Context -> Rule Baseline Decision -> SILENT / WAIT / ASSIST
+Wanderly events -> Journey Context -> Rules or AI Proposal -> Deterministic Browser Policy -> Acknowledged Concierge Suggestion
 
 The rule baseline is an evaluation surface. It is intentionally separate from the
-future execution policy, which will govern AI recommendations with confidence,
-dismissal, budget, cooldown, and progression safeguards.
+implemented browser execution policy, which governs recommendations with confidence,
+dismissal, budget, cooldown, and progression safeguards. Server-authoritative
+policy and durable analytics remain future pilot work.
 
 ## Phase B — AI reasoner
 
@@ -55,7 +56,8 @@ after 15 seconds, request bodies are capped at 8 KB, and the endpoint is
 rate-limited per client (30 requests/minute, in-memory per instance). The
 system instruction includes the output schema, and decisions are rejected unless
 `assistanceType` is `NONE` for SILENT/WAIT and specific for ASSIST. No final
-execution policy is present yet.
+server-authoritative execution policy is present yet; the browser policy and
+acknowledged customer-facing suggestion UI are implemented.
 
 ## Phase C — Real-model journey evaluation
 
@@ -109,11 +111,14 @@ Phase A now includes executable tests for all six journeys in
 `lib/assistance-decision.test.ts`. The visible prototype instruments route
 views, comparison actions, travel-information selection/FAQ actions, date
 searches, package clicks (`PACKAGE_VIEW` + `PRICE_VIEW` per package), the
-packages page (`PRICE_VIEW`), and booking. Opening `/booking` is not progression;
-the first form interaction emits `BOOKING_START`, later ones `BOOKING_STEP`. A
-`DATE_SEARCH` counts as forward progression. There is no hotel-selection or
-booking-completion screen yet, so `HOTEL_VIEW` and `BOOKING_COMPLETE` remain
-available for future UI work and are covered directly in tests.
+packages page (`PRICE_VIEW`), and booking. Direct entry to a package detail page
+emits `PACKAGE_VIEW` and `PRICE_VIEW`; opening fictional stay details emits
+`HOTEL_VIEW`. FAQ accordions contain complete answers and emit `FAQ_SEARCH` on
+opening. Opening `/booking` is not progression; the first form interaction emits
+`BOOKING_START`, later ones `BOOKING_STEP`. A `DATE_SEARCH` counts as forward
+progression. The richer planning form ends in a local request preview, not a real
+reservation, so it does not emit `BOOKING_COMPLETE`; that event remains covered
+directly in tests for a future transactional integration.
 
 ## Known baseline limits
 
@@ -125,6 +130,6 @@ The mock provider is a deliberately weaker stand-in and is not a measure of a re
 ## Next Step 3 increment
 
 Run a live evaluation (`--live`) to compare a real model with the baseline,
-then build the deterministic execution policy (confidence threshold, cooldown,
-dismissal, budget) and the customer-facing assistance UI that emits the
-`ASSISTANCE_*` events.
+when explicitly authorized. The deterministic browser policy and customer-facing
+assistance UI already emit `ASSISTANCE_*` events. Next, publish and ingest the
+approved concierge knowledge and plan server-authoritative policy for a pilot.

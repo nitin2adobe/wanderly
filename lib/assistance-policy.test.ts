@@ -109,3 +109,21 @@ test('the per-session invitation budget is enforced', () => {
   ];
   assert.equal(evaluate(journey2, session).rule, 'SESSION_BUDGET');
 });
+
+test('failed and cancelled opening attempts do not consume delivery budget or mark a type handled', () => {
+  for (const response of ['ASSISTANCE_FAILED', 'ASSISTANCE_CANCELLED'] as const) {
+    const session = [
+      assistanceEvent('ASSISTANCE_REQUESTED', 'DESTINATION_COMPARISON', '2026-01-01T00:00:00Z'),
+      assistanceEvent(response, 'DESTINATION_COMPARISON', '2026-01-01T00:00:10Z'),
+    ];
+    assert.equal(hasPendingInvitation(session), false);
+    assert.equal(evaluate(journey2, session).allowed, true);
+  }
+});
+
+test('in-flight requests block duplicates and acknowledged opening is handled without pretending submission', () => {
+  const requested = assistanceEvent('ASSISTANCE_REQUESTED', 'DESTINATION_COMPARISON', '2026-01-01T00:00:00Z');
+  assert.equal(evaluate(journey2, [requested]).rule, 'INVITATION_PENDING');
+  const opened = assistanceEvent('ASSISTANCE_OPENED', 'DESTINATION_COMPARISON', '2026-01-01T00:00:10Z');
+  assert.equal(evaluate(journey2, [requested, opened]).rule, 'TYPE_ALREADY_HANDLED');
+});

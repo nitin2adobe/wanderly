@@ -1,3 +1,14 @@
-'use client';
-import {track} from '@/lib/tracking';
-export default function Page(){return <main className="shell"><section className="section topspace"><div className="eyebrow">Travel info</div><h1 className="display">Good trips start with<br/>clear answers.</h1><div className="booking" style={{marginTop:40}}><div className="panel"><h2 style={{fontSize:32}}>Visa & entry</h2><p className="muted">Entry requirements vary by passport, destination and length of stay. Wanderly keeps practical guidance next to your trip so it’s easier to know what to verify before departure.</p><div className="field"><label>Destination</label><select defaultValue="Japan" onChange={e=>track('TRAVEL_INFO_VIEW',window.location.pathname,e.target.value)}><option>Japan</option><option>Bali, Indonesia</option><option>Maldives</option><option>Switzerland</option></select></div><div className="notice">For the POC, travel requirements are illustrative. Always verify official government guidance before travel.</div></div><div className="panel"><h2 style={{fontSize:32}}>Frequently asked</h2><ul className="list">{['When should I book flights?','Can I change my travel dates?','What does the package price include?','Do I need travel insurance?','How do airport transfers work?'].map(question=><li key={question} onClick={()=>track('FAQ_SEARCH',window.location.pathname,question)}>{question}</li>)}</ul></div></div></section></main>}
+import Link from 'next/link';
+import TravelInfo from '@/components/TravelInfo';
+import { getDestination } from '@/lib/data';
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ destination?: string | string[] }> }) {
+  const query = await searchParams;
+  const destination = typeof query.destination === 'string' ? query.destination : 'japan';
+  return <main className="shell"><section className="section topspace">
+    <div className="eyebrow">Travel info</div><h1 className="display">Good trips start with<br/>clear answers.</h1>
+    <p className="muted contentIntro">Understand the practical choices behind the itinerary: transfers, luggage, stay suitability and the questions to settle before paying.</p>
+    {getDestination(destination) ? <TravelInfo initialDestination={destination}/> : <div className="notice" role="alert">That destination is not in our catalog. <Link href="/travel-info">Browse practical answers</Link></div>}
+    <div className="notice contentDisclaimer">Illustrative planning information only, not current entry, medical, insurance or legal advice. Verify official government guidance and the actual provider's terms before real travel.</div>
+  </section></main>;
+}

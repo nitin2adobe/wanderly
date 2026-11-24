@@ -1,6 +1,6 @@
 import type { AssistanceCopy } from './assistance-copy.ts';
 import type { ConciergeIntent, ConciergePriority } from './concierge-handoff.ts';
-import { destinations, packages } from './data.ts';
+import { destinations, getPackage, packages } from './data.ts';
 import type { WanderlyEventType } from './events.ts';
 
 export type BrandLookup = { detail: string; image?: string };
@@ -27,10 +27,10 @@ const wanderly: BrandConfig = {
   lookup(entity, priority, intent) {
     const destination = destinations.find(d => same(d.name, entity));
     // Package prices are only quoted when the visitor was looking at packages.
-    const pack = intent === 'PACKAGE_SELECTION' ? packages.find(p => same(p.packageName, entity) || same(p.name, entity)) : undefined;
+    const pack = intent === 'PACKAGE_SELECTION' ? getPackage(entity) ?? packages.find(p => same(p.name, entity)) : undefined;
     const source = pack ?? destination;
     if (!source) return undefined;
-    const image = destination?.image;
+    const image = source.image;
     switch (priority) {
       case 'BUDGET': return { detail: pack ? `${pack.packageName} is ${pack.price}.` : `Trips start from ${source.from}.`, image };
       case 'ACTIVITIES': return { detail: `Highlights: ${source.highlights.join(', ')}.`, image };

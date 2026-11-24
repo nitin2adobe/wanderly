@@ -1,24 +1,22 @@
 'use client';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { getEvents, getSessionId, track } from '@/lib/tracking';
-
-function semantic(path:string){
-  if(path.startsWith('/destinations/')) return {type:'DESTINATION_VIEW' as const,entity:path.split('/')[2]};
-  if(path==='/compare') return {type:'COMPARE_VIEW' as const};
-  if(path==='/packages') return {type:'PRICE_VIEW' as const};
-  if(path==='/travel-info') return {type:'TRAVEL_INFO_VIEW' as const};
-  return null;
-}
+import { pageSignals } from '@/lib/page-signals';
+import { conciergePageDestination } from '@/lib/concierge-context';
 export default function JourneyTracker(){
   const pathname=usePathname(); const last=useRef('');
+  const destinationParam=useSearchParams().get('destination');
   useEffect(()=>{
-    if(!pathname || pathname==='/agent' || last.current===pathname) return;
-    last.current=pathname;
+    if(!pathname || pathname==='/agent') return;
+    const destination=conciergePageDestination(pathname,destinationParam ? `?destination=${encodeURIComponent(destinationParam)}` : '');
+    const page=destinationParam && destination ? `${pathname}?destination=${destination.slug}` : pathname;
+    if(last.current===page) return;
+    last.current=page;
     const sid=getSessionId();
-    if(!getEvents().some(e=>e.sessionId===sid)) track('SESSION_START',pathname);
-    track('PAGE_VIEW',pathname);
-    const s=semantic(pathname); if(s) track(s.type,pathname,s.entity);
-  },[pathname]);
+    if(!getEvents().some(e=>e.sessionId===sid)) track('SESSION_START',page);
+    track('PAGE_VIEW',page);
+    for(const signal of pageSignals(pathname)) track(signal.eventType,page,signal.eventType==='TRAVEL_INFO_VIEW' ? destination?.slug : signal.entity);
+  },[pathname,destinationParam]);
   return null;
 }

@@ -1,8 +1,16 @@
-'use client';
-import {useRef} from 'react';
-import {track} from '@/lib/tracking';
-export default function Page(){
- // The first interaction starts booking; merely opening the page is not progression.
- const started=useRef(false);
- const progress=(entity?:string)=>{track(started.current?'BOOKING_STEP':'BOOKING_START',window.location.pathname,entity);started.current=true};
- return <main className="shell"><section className="section topspace"><div className="eyebrow">Plan your trip</div><h1 className="display">One step closer.</h1><div className="booking" style={{marginTop:35}}><form className="panel"><div className="field"><label>Destination</label><select defaultValue="Maldives" onChange={e=>progress(e.target.value)}><option>Maldives</option><option>Bali</option><option>Japan</option><option>Switzerland</option></select></div><div className="field"><label>Departure date</label><input type="date" onChange={e=>{track('DATE_SEARCH',window.location.pathname,e.target.value);progress()}}/></div><div className="field"><label>Travellers</label><select defaultValue="2 adults" onChange={()=>progress()}><option>2 adults</option><option>1 adult</option><option>2 adults + 1 child</option></select></div><div className="field"><label>Trip style</label><select defaultValue="Relaxed" onChange={()=>progress()}><option>Relaxed</option><option>Balanced</option><option>Active</option></select></div><button className="btn" type="button" onClick={()=>progress()}>See available journeys</button></form><aside className="panel"><div className="eyebrow">Why Wanderly</div><h2 style={{fontSize:34}}>Curated, not crowded.</h2><p className="muted">Thoughtful stays, flexible pacing and practical information — brought together so you spend less time tab-hopping and more time looking forward to the trip.</p><div className="notice">No payment is collected in this prototype.</div></aside></div></section></main>}
+import Link from 'next/link';
+import BookingPlanner from '@/components/BookingPlanner';
+import { getBookingSelection } from '@/lib/data';
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ destination?: string | string[]; package?: string | string[] }> }) {
+  const query = await searchParams;
+  const destination = typeof query.destination === 'string' ? query.destination : undefined;
+  const packageId = typeof query.package === 'string' ? query.package : undefined;
+  const selection = getBookingSelection(destination, packageId);
+  return <main className="shell"><section className="section topspace">
+    <div className="eyebrow">Plan your trip</div><h1 className="display">One step closer.</h1>
+    <p className="muted contentIntro">Choose your preferences, review the outline and prepare a local demo request. There is no live availability search, reservation or payment.</p>
+    {selection ? <BookingPlanner key={`${selection.destination.slug}-${selection.pack?.id ?? ''}`} initialDestination={selection.destination.slug} initialPackage={selection.pack?.id}/> :
+      <div className="notice" role="alert">This trip selection is unavailable or the package does not match the destination. <Link href="/packages">Choose a journey from the catalog</Link>.</div>}
+  </section></main>;
+}

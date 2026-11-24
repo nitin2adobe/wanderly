@@ -48,6 +48,16 @@ export function useDestinationComparison() {
   return { selected, toggleComparison };
 }
 
+export function getComparisonSlugs(): string[] {
+  return readSelection(getSnapshot()).map(destination => destination.slug);
+}
+
+export function resetDestinationComparison() {
+  sessionStorage.removeItem(comparisonKey);
+  fallbackSnapshot = '[]';
+  window.dispatchEvent(new Event(comparisonUpdated));
+}
+
 export default function DestinationComparison({ slug }: { slug: string }) {
   const { selected, toggleComparison } = useDestinationComparison();
   const included = selected.some(destination => destination.slug === slug);

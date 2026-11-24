@@ -1,62 +1,58 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { adobeConnector, CONCIERGE_OPEN_EVENT } from './concierge-connector.ts';
+import { adobeConnector, CONCIERGE_OPEN_EVENT, type ConciergeOpenRequest } from './concierge-connector.ts';
 import type { ConciergeHandoff } from './concierge-handoff.ts';
 
 const handoff: ConciergeHandoff = {
-  version: 1,
-  brand: 'wanderly',
-  intent: 'DESTINATION_COMPARISON',
-  entities: ['Bali', 'Maldives'],
-  observedSignals: ['Compared destinations'],
-  explicitPreferences: {},
-  entryPoint: 'proactive_invitation',
-  sessionId: 'test-session',
-  createdAt: '2026-01-01T00:00:00.000Z',
+  version: 1, brand: 'wanderly', intent: 'DESTINATION_COMPARISON', entities: ['Bali', 'Maldives'],
+  observedSignals: ['Compared destinations'], explicitPreferences: {}, entryPoint: 'proactive_invitation',
+  sessionId: 'test-session', createdAt: '2026-01-01T00:00:00.000Z',
 };
-
-function withWindow(run: (target: EventTarget) => void) {
+async function withWindow(run: (target: EventTarget) => Promise<void>) {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'window');
   const target = new EventTarget();
   Object.defineProperty(globalThis, 'window', { configurable: true, value: target });
-  try {
-    run(target);
-  } finally {
+  try { await run(target); }
+  finally {
     if (original) Object.defineProperty(globalThis, 'window', original);
     else Reflect.deleteProperty(globalThis, 'window');
   }
 }
 
-test('opens the Adobe chat without forwarding the invitation payload', () => withWindow(target => {
-  let received: Event | undefined;
+test('connector waits for SDK acknowledgement, not event receipt, without forwarding full handoff', () => withWindow(async target => {
+  let request!: ConciergeOpenRequest;
   target.addEventListener(CONCIERGE_OPEN_EVENT, event => {
-    received = event;
     event.preventDefault();
+    request = (event as CustomEvent<ConciergeOpenRequest>).detail;
   });
-  adobeConnector.open(handoff);
-  assert.ok(received);
-  assert.equal('detail' in received, false);
-  assert.equal(adobeConnector.supportsBrand('wanderly'), true);
+  let finished = false;
+  const pending = adobeConnector.open(handoff, { initialMessage: 'Question', activationId: 'a1' }).then(result => { finished = true; return result; });
+  await Promise.resolve();
+  assert.equal(finished, false);
+  assert.equal('handoff' in request, false);
+  assert.equal('sessionId' in request, false);
+  assert.equal(request.initialMessage, 'Question');
+  request.resolve({ status: 'opened' });
+  assert.equal((await pending).status, 'opened');
 }));
 
-test('fails explicitly when the Adobe chat is not mounted', () => withWindow(() => {
-  assert.throws(() => adobeConnector.open(handoff), /not available/);
-}));
-
-test('requests only the generic greeting, not the journey payload', () => withWindow(target => {
-  let detail: unknown;
+test('connector surfaces asynchronous SDK failure and unavailable listeners', () => withWindow(async target => {
+  await assert.rejects(adobeConnector.open(handoff), /not available/);
   target.addEventListener(CONCIERGE_OPEN_EVENT, event => {
-    detail = (event as CustomEvent).detail;
     event.preventDefault();
+    (event as CustomEvent<ConciergeOpenRequest>).detail.reject(new Error('SDK failed'));
   });
-  adobeConnector.open(handoff, { initialMessage: 'Hi' });
-  assert.deepEqual(detail, { initialMessage: 'Hi' });
+  await assert.rejects(adobeConnector.open(handoff), /SDK failed/);
 }));
 
-test('does not open the Wanderly chat for an unconfigured brand', () => withWindow(target => {
-  let received = false;
-  target.addEventListener(CONCIERGE_OPEN_EVENT, () => { received = true; });
-  assert.equal(adobeConnector.supportsBrand('electronics-demo'), false);
-  assert.throws(() => adobeConnector.open({ ...handoff, brand: 'electronics-demo' }), /not configured/);
-  assert.equal(received, false);
+test('connector supports cancellation without claiming success', () => withWindow(async target => {
+  target.addEventListener(CONCIERGE_OPEN_EVENT, event => event.preventDefault());
+  const controller = new AbortController();
+  const pending = adobeConnector.open(handoff, { signal: controller.signal });
+  controller.abort();
+  assert.equal((await pending).status, 'cancelled');
+}));
+
+test('unconfigured brand is rejected', () => withWindow(async () => {
+  await assert.rejects(adobeConnector.open({ ...handoff, brand: 'electronics-demo' }), /not configured/);
 }));

@@ -1,2 +1,12 @@
-import DestinationCard from '@/components/DestinationCard'; import {destinations} from '@/lib/data';
-export default function Page(){return <main className="shell"><section className="section topspace"><div className="eyebrow">Destinations</div><h1 className="display">Choose a different rhythm.</h1><p className="muted" style={{maxWidth:620}}>From private-island stillness to fast-moving cities and mountain railways, explore four deliberately different ways to get away.</p><div className="grid" style={{marginTop:40}}>{destinations.map(d=><DestinationCard d={d} key={d.slug}/>)}</div></section></main>}
+import DestinationExplorer from '@/components/DestinationExplorer';
+
+export default async function Page({ searchParams }: { searchParams: Promise<{ search?: string | string[] }> }) {
+  const query = await searchParams;
+  const search = typeof query.search === 'string' ? query.search : '';
+  return <main className="shell"><section className="section topspace">
+    <div className="eyebrow">Destinations</div><h1 className="display">Choose a different rhythm.</h1>
+    <p className="muted contentIntro">From private-island stillness to food-led cities and mountain railways, find a place that suits the way you want to spend your days.</p>
+    <DestinationExplorer key={search} initialSearch={search}/>
+    <div className="notice contentDisclaimer">All destination guidance and starting prices are illustrative. Confirm conditions, entry requirements and final quotes before real travel.</div>
+  </section></main>;
+}

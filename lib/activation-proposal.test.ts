@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { proposeAssistance } from './activation-proposal.ts';
+import { proposeAssistance, recordedActivationProposal } from './activation-proposal.ts';
+import type { WanderlyEvent } from './events.ts';
 import { buildJourneyContext } from './journey-context.ts';
 import { journeyEvents } from './labelled-journeys.ts';
 
@@ -29,4 +30,29 @@ test('AI failures fall back to the rules', async () => {
     assert.equal(proposal.source, 'rules-fallback');
     assert.equal(proposal.decision.decision, 'ASSIST');
   }
+});
+
+test('the activation trace uses the active AI WAIT instead of the rules ASSIST', () => {
+  const wait = { ...aiDecision, decision: 'WAIT', assistanceType: 'NONE' };
+  const evaluation: WanderlyEvent = {
+    id: 'evaluation', sessionId: 'test', timestamp: new Date().toISOString(),
+    eventType: 'ASSISTANCE_EVALUATED', page: '/destinations/maldives',
+    metadata: { activationMode: 'ai', source: 'ai-live', contextKey: JSON.stringify(context), decision: wait },
+  };
+  assert.deepEqual(recordedActivationProposal([evaluation], context, true), { decision: wait, source: 'ai-live' });
+  assert.equal(recordedActivationProposal([evaluation], context, false), undefined);
+  const changed = buildJourneyContext(journeyEvents([['DESTINATION_VIEW', 'japan']]));
+  assert.equal(recordedActivationProposal([evaluation], changed, true), undefined);
+  assert.deepEqual(buildJourneyContext([...journeyEvents([
+    ['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['DESTINATION_VIEW', 'bali'], ['COMPARE_VIEW'], ['DESTINATION_VIEW', 'maldives'],
+  ]), evaluation]), context);
+});
+
+test('invalid recorded proposals are not presented as active decisions', () => {
+  const evaluation: WanderlyEvent = {
+    id: 'evaluation', sessionId: 'test', timestamp: new Date().toISOString(),
+    eventType: 'ASSISTANCE_EVALUATED', page: '/',
+    metadata: { activationMode: 'ai', source: 'ai-live', contextKey: JSON.stringify(context), decision: { decision: 'ASSIST' } },
+  };
+  assert.equal(recordedActivationProposal([evaluation], context, true), undefined);
 });
