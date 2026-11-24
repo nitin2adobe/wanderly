@@ -29,6 +29,27 @@ npm run typecheck
 
 Open http://localhost:3000. Step 3 decisioning and the AI reasoner are documented in [STEP3.md](STEP3.md).
 
+### GitHub Pages build
+
+Pages serves a static export, not a Next.js server. Query-driven destination,
+package, information and booking selections are read in client components inside
+Suspense boundaries so direct filtered links and Back navigation work without
+server rendering. The Pages workflow uses Node 22 and enables
+`WANDERLY_STATIC_EXPORT=true`; its Pages setup also supplies the deployment base
+path and disables server image optimization.
+
+To reproduce the export locally in PowerShell:
+
+```powershell
+$env:WANDERLY_STATIC_EXPORT = 'true'
+npm run build
+Remove-Item Env:WANDERLY_STATIC_EXPORT
+```
+
+The exported `out` directory has no live `/api/assistance/reason` endpoint.
+Use rules-mode assistance on Pages; live server-side AI reasoning requires a
+Next.js server deployment. A normal `npm run build` retains that server endpoint.
+
 ## Richer customer demo
 
 The homepage **New session** button closes the chat window, clears only the

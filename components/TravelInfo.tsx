@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { TrackedDetails } from '@/components/TrackedAction';
 import { destinations } from '@/lib/data';
 import { travelFaqs } from '@/lib/travel-info';
 
-export default function TravelInfo({ initialDestination }: { initialDestination: string }) {
-  const destinationSlug = initialDestination;
+export default function TravelInfo() {
+  const selections = useSearchParams().getAll('destination');
+  const destinationSlug = selections.length === 1 ? selections[0] : 'japan';
   const pathname = usePathname();
   const router = useRouter();
   const setDestinationSlug = (slug: string) => {
@@ -18,7 +19,7 @@ export default function TravelInfo({ initialDestination }: { initialDestination:
   };
   const [search, setSearch] = useState('');
   const destination = destinations.find(item => item.slug === destinationSlug);
-  if (!destination) return <div className="notice" role="alert">This destination is unavailable. Reload the page or choose a destination from the catalog.</div>;
+  if (!destination) return <div className="notice" role="alert">That destination is not in our catalog. <Link href="/travel-info">Browse practical answers</Link></div>;
   const query = search.trim().toLowerCase();
   const faqs = travelFaqs(destination).filter(faq => `${faq.question} ${faq.answer}`.toLowerCase().includes(query));
   return <div>
