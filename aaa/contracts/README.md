@@ -2,7 +2,7 @@
 
 Versioned JSON Schema (draft 2020-12) contracts for the Adaptive Assistance Agent. AAA is site-agnostic. Wanderly is one reference deployment, so these files contain no site or domain vocabulary. A test enforces this.
 
-**Status: draft v1, awaiting consumer review.** Not frozen until the review gate below is closed.
+**Status: draft v1, not canonical or frozen.** The canonical schemas belong in the separate private Python AAA repository; Wanderly will consume a versioned copy. The files here are a proposed draft, not that canonical source or an established consumer copy. The private repository exists, but its addition to this Project was cancelled. Migration, the versioned Wanderly copy, and the consumer review gate below remain outstanding.
 
 | Contract | Schema | Producer → consumer |
 |---|---|---|
@@ -33,20 +33,21 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 - `seq` and `pageRevision` are monotonic per session and per page instance.
 - `locale` must be in the profile's `locales.supported`.
 
-## Decisions not yet approved
+## Decisions
 
 **User-approved (AAA-3):** D4 signal set. The six raw kinds of PRD §3 form a closed v1 enum, and a new kind requires a schema version bump. The two derived states follow PRD §3.
 
+**Approved (D10):** a versioned JSON Site Profile validated by JSON Schema. Its canonical schemas belong in the private AAA repository, with a versioned copy consumed by Wanderly.
+
 The following encode PRD v2 recommendations that are **not user-approved**. Changing them later only needs a minor or major bump.
 
-- **D10 (profile format):** the Site Profile is JSON validated by this schema.
 - **D6 (starter caps):** StarterResult allows at most 3 starters, with at most one primary and at most one commercial starter.
 - **D16 (suppression):** not encoded. The contract only carries the tri-state `inProgress` and profile-supplied timeouts.
 - **Other choices made here:** `transaction.step` uses `phase` values `start`, `step` and `complete`. A commercial playbook must list `offerIds`. A fallback result must contain template starters and a reason code. An abstain result must contain no starters or offers and must have a reason code.
 
 ## Review gate (AAA-3 acceptance)
 
-The owners of these workstreams have **not yet reviewed** the contracts:
+The owners of these workstreams have **not yet reviewed** the contracts. Their review of the canonical contracts is required before freezing:
 
 - **E2 (signal capture):** the CanonicalSignal kind payloads, `source`, and whether JourneyState should embed raw signals or keep a bounded summary.
 - **E5 (starter service):** the StarterRequest payload size, given that it embeds the journey; the StarterResult outcome rules and reason codes.
