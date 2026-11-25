@@ -22,7 +22,7 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 - **locale** is a BCP 47 tag on signals, journey state and results. Profiles declare `locales.default` and `locales.supported`.
 - **pageInstanceId + pageRevision** identify the page a signal, snapshot or result belongs to. `pageRevision` increments on meaningful in-page changes and is used for staleness checks. Only event-like or page-bound objects carry these fields. A SiteProfile does not.
 - **Raw versus derived**: CanonicalSignal holds only the six raw kinds. `hesitation` and `inProgress` exist only in `JourneyState.derived`, as tri-state (`active` / `inactive` / `uncertain`) values with their basis signals.
-- **No free text or PII**: IDs follow `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`. Facet values are profile-declared IDs. Unknown properties are rejected. Only starter text and profile labels are text, and they must be rendered as text, never as HTML.
+- **Minimised free text; PII is a producer obligation**: IDs follow `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`. Facet values are profile-declared IDs. Unknown properties are rejected. These rules reduce the risk of PII exposure, but no schema or ID pattern can prove that an identifier is not personal data (for example, `user.name.example` matches the pattern); producers and site profiles must emit opaque, non-PII IDs. Only starter text and profile labels are text, and they must be rendered as text, never as HTML.
 - **No tenant identity or URLs from clients**: StarterRequest has no tenant field. Tenant identity comes from the server-issued token. Profiles and requests have no URL fields.
 - **No fixed thresholds**: hesitation parameters and the `inProgress` idle timeout are required profile values with no defaults.
 

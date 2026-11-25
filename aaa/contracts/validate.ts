@@ -64,6 +64,18 @@ const typeOf = (v: unknown) => v === null ? 'null' : Array.isArray(v) ? 'array' 
 const matchesType = (v: unknown, t: string) => t === 'number' ? typeof v === 'number' && Number.isFinite(v) : typeOf(v) === t;
 const isObject = (v: unknown): v is Record<string, unknown> => typeOf(v) === 'object';
 const equal = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+const hasOwn = (obj: object, key: string) => Object.prototype.hasOwnProperty.call(obj, key);
+const DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(\.\d+)?([Zz]|[+-](\d{2}):(\d{2}))$/;
+// Leap seconds (:60) are rejected; contract timestamps are machine-generated.
+function isDateTime(value: string): boolean {
+  const m = DATE_TIME.exec(value);
+  if (!m) return false;
+  const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+  const offsetOk = m[9] === undefined || (Number(m[9]) <= 23 && Number(m[10]) <= 59);
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth && hour <= 23 && minute <= 59 && second <= 59 && offsetOk;
+}
 
 function check(schema: Schema, value: unknown, path: string, baseId: string, errors: ContractDiagnostic[]): void {
   if (schema === true) return;
@@ -84,18 +96,18 @@ function check(schema: Schema, value: unknown, path: string, baseId: string, err
     if (s.minLength !== undefined && [...value].length < s.minLength) fail(`must have at least ${s.minLength} characters`);
     if (s.maxLength !== undefined && [...value].length > s.maxLength) fail(`must have at most ${s.maxLength} characters`);
     if (s.pattern && !regex(s.pattern).test(value)) fail(`must match ${s.pattern}`);
-    if (s.format === 'date-time' && Number.isNaN(Date.parse(value))) fail('must be a valid date-time');
+    if (s.format === 'date-time' && !isDateTime(value)) fail('must be a valid date-time');
   }
   if (typeof value === 'number' && s.minimum !== undefined && value < s.minimum) fail(`must be >= ${s.minimum}`);
 
   if (isObject(value)) {
     const keys = Object.keys(value);
-    for (const key of s.required ?? []) if (!(key in value)) fail(`is missing required property "${key}"`);
+    for (const key of s.required ?? []) if (!hasOwn(value, key)) fail(`is missing required property "${key}"`);
     if (s.minProperties !== undefined && keys.length < s.minProperties) fail(`must have at least ${s.minProperties} properties`);
     for (const key of keys) {
       const at = `${path}/${key}`;
       if (s.propertyNames) check(s.propertyNames, key, `${at} (name)`, baseId, errors);
-      if (s.properties && key in s.properties) check(s.properties[key], value[key], at, baseId, errors);
+      if (s.properties && hasOwn(s.properties, key)) check(s.properties[key], value[key], at, baseId, errors);
       else if (s.additionalProperties === false) fail('is not an allowed property', at);
       else if (isObject(s.additionalProperties)) check(s.additionalProperties, value[key], at, baseId, errors);
     }

@@ -90,6 +90,16 @@ test('site profiles are declarative, URL-free and supply their own thresholds', 
   assertRejected('SiteProfile', { ...travelProfile, profileVersion: 'latest' }, '/profileVersion must match');
 });
 
+test('validator only honours own properties and real calendar timestamps', () => {
+  assertRejected('CanonicalSignal', { ...travelSignals[0], constructor: 'x' }, '/constructor is not an allowed property');
+  const inheritedRequired = Object.create(clone(travelSignals[0]) as object) as Record<string, unknown>;
+  assertRejected('CanonicalSignal', inheritedRequired, 'missing required property "schemaVersion"');
+  for (const ts of ['2026-02-30T10:00:00Z', '2025-02-29T10:00:00Z', '2026-13-01T10:00:00Z', '2026-11-25T24:00:00Z', '2026-11-25T10:00:60Z']) {
+    assertRejected('CanonicalSignal', { ...travelSignals[0], ts }, '/ts must be a valid date-time');
+  }
+  assert.deepEqual(errorsOf('CanonicalSignal', { ...travelSignals[0], ts: '2028-02-29T23:59:59.123Z' }), []);
+});
+
 test('starter requests never carry tenant identity', () => {
   assertRejected('StarterRequest', { ...travelRequest, tenantId: 'tenant-other' }, '/tenantId is not an allowed property');
 });
