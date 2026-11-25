@@ -115,6 +115,11 @@ test('starter results enforce outcome consistency and starter caps', () => {
   const helper = { ...primary, role: 'followup' as const };
   assertRejected('StarterResult', { ...travelResult, starters: [primary, ...['a', 'b', 'c'].map(id => ({ ...helper, starterId: id }))] }, '/starters must have at most 3 items');
   assertRejected('StarterResult', { ...retailFallbackResult, reasonCodes: [] }, '/reasonCodes must have at least 1 items');
+  assertRejected('StarterResult', { ...travelResult, starters: [{ ...primary, kind: 'commercial' }] }, '/starters must contain at least 1 matching');
+  assertRejected('StarterResult', { ...travelResult, starters: [{ ...commercial, role: 'followup' }] }, '/starters must contain at least 1 matching');
+  assertRejected('StarterResult', { ...travelResult, offerIds: [] }, '/offerIds must have at least 1 items');
+  const { templateId: _omitted, ...withoutTemplate } = retailFallbackResult.starters[0];
+  assertRejected('StarterResult', { ...retailFallbackResult, starters: [withoutTemplate] }, '/starters/0 is missing required property "templateId"');
 });
 
 test('validator refuses schemas that use unsupported keywords', () => {
