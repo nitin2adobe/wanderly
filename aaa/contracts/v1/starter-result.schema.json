@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:v1:starter-result",
+  "title": "StarterResult v1",
+  "description": "Response of POST /aaa/starters. The client must recheck consent, eligibility, profileVersion, pageInstanceId/pageRevision and expiresAt before display and on activation, and drop the result if any check fails. Starter text is plain text and must never be rendered as HTML.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "requestId", "sessionId", "outcome", "profileId", "profileVersion",
+    "locale", "pageInstanceId", "pageRevision", "generatedAt", "expiresAt",
+    "playbookId", "starters", "evidenceIds", "offerIds", "reasonCodes"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "urn:aaa:contracts:v1:common#/$defs/schemaVersion" },
+    "requestId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "sessionId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "outcome": {
+      "description": "assist: validated starters from a selected playbook. fallback: pre-validated template starters after a model failure or timeout. abstain: no starters.",
+      "type": "string",
+      "enum": ["assist", "abstain", "fallback"]
+    },
+    "profileId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "profileVersion": { "$ref": "urn:aaa:contracts:v1:common#/$defs/version" },
+    "locale": {
+      "description": "Locale of all starter text in this result.",
+      "$ref": "urn:aaa:contracts:v1:common#/$defs/locale"
+    },
+    "pageInstanceId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "pageRevision": { "$ref": "urn:aaa:contracts:v1:common#/$defs/pageRevision" },
+    "generatedAt": { "$ref": "urn:aaa:contracts:v1:common#/$defs/timestamp" },
+    "expiresAt": { "$ref": "urn:aaa:contracts:v1:common#/$defs/timestamp" },
+    "playbookId": {
+      "anyOf": [
+        { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
+    "starters": {
+      "description": "0 to 3 starters including the primary question, with at most one primary and at most one commercial starter (PRD §5, D6). Never padded.",
+      "type": "array",
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/starter" },
+      "contains": { "required": ["kind"], "properties": { "kind": { "const": "commercial" } } },
+      "minContains": 0,
+      "maxContains": 1
+    },
+    "evidenceIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+    "offerIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+    "reasonCodes": {
+      "type": "array",
+      "items": { "$ref": "urn:aaa:contracts:v1:common#/$defs/reasonCode" },
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "properties": {
+        "starters": {
+          "contains": { "required": ["role"], "properties": { "role": { "const": "primary" } } },
+          "minContains": 0,
+          "maxContains": 1
+        }
+      }
+    },
+    {
+      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "assist" } } },
+      "then": {
+        "properties": {
+          "playbookId": { "type": "string" },
+          "starters": { "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "fallback" } } },
+      "then": {
+        "properties": {
+          "starters": { "minItems": 1 },
+          "reasonCodes": { "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": { "required": ["outcome"], "properties": { "outcome": { "const": "abstain" } } },
+      "then": {
+        "properties": {
+          "playbookId": { "type": "null" },
+          "starters": { "maxItems": 0 },
+          "offerIds": { "maxItems": 0 },
+          "reasonCodes": { "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "starter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["starterId", "role", "kind", "text"],
+      "properties": {
+        "starterId": {
+          "description": "Stable ID for attribution of starter.selected.",
+          "$ref": "urn:aaa:contracts:v1:common#/$defs/id"
+        },
+        "role": { "type": "string", "enum": ["primary", "followup"] },
+        "kind": { "type": "string", "enum": ["helpful", "commercial"] },
+        "text": { "$ref": "urn:aaa:contracts:v1:common#/$defs/plainText" },
+        "templateId": {
+          "description": "Profile starter template this was derived from, if any.",
+          "$ref": "urn:aaa:contracts:v1:common#/$defs/id"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:v1:site-profile",
+  "title": "SiteProfile v1",
+  "description": "Everything site-specific for one tenant site, as declarative data. A profile version is immutable once reviewed; any change is a new profileVersion. Contains no code, no URLs for tool endpoints and no secrets. Numeric thresholds are always profile-supplied; this contract sets no defaults.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "profileId", "profileVersion", "tenantId", "locales",
+    "taxonomy", "facets", "signalMap", "momentRules", "playbooks",
+    "offerSource", "evidenceSet", "contextMap", "bcBinding", "successEvent"
+  ],
+  "properties": {
+    "schemaVersion": { "$ref": "urn:aaa:contracts:v1:common#/$defs/schemaVersion" },
+    "profileId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "profileVersion": { "$ref": "urn:aaa:contracts:v1:common#/$defs/version" },
+    "tenantId": {
+      "description": "Owning tenant. Server-side resolution must match the caller's scoped token; never trusted from a client request.",
+      "$ref": "urn:aaa:contracts:v1:common#/$defs/id"
+    },
+    "displayName": { "$ref": "urn:aaa:contracts:v1:common#/$defs/plainText" },
+    "locales": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "supported"],
+      "properties": {
+        "default": { "$ref": "urn:aaa:contracts:v1:common#/$defs/locale" },
+        "supported": {
+          "type": "array",
+          "items": { "$ref": "urn:aaa:contracts:v1:common#/$defs/locale" },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "taxonomy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pageTypes", "entityTypes", "funnelStages", "topics"],
+      "properties": {
+        "pageTypes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "transactional"],
+            "properties": {
+              "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+              "label": { "$ref": "urn:aaa:contracts:v1:common#/$defs/localizedText" },
+              "funnelStageId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+              "transactional": {
+                "description": "True when the page type is part of a transaction flow.",
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "entityTypes": { "type": "array", "items": { "$ref": "#/$defs/taxonomyEntry" } },
+        "funnelStages": { "type": "array", "items": { "$ref": "#/$defs/taxonomyEntry" } },
+        "topics": {
+          "description": "Information topics referenced by info.sought.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/taxonomyEntry" }
+        }
+      }
+    },
+    "facets": {
+      "description": "Profile-declared domain priorities (replacing core enums).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "values"],
+        "properties": {
+          "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+          "label": { "$ref": "urn:aaa:contracts:v1:common#/$defs/localizedText" },
+          "values": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/taxonomyEntry" } }
+        }
+      }
+    },
+    "signalMap": {
+      "description": "Declarative mapping from host inputs to canonical signals. No code-valued entries.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source", "match", "kind", "provenance"],
+        "properties": {
+          "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+          "source": { "type": "string", "enum": ["track", "data-attribute", "acdl"] },
+          "match": {
+            "description": "Host event or attribute name to match exactly.",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$"
+          },
+          "kind": { "$ref": "urn:aaa:contracts:v1:common#/$defs/rawSignalKind" },
+          "provenance": { "$ref": "urn:aaa:contracts:v1:common#/$defs/provenance" },
+          "fields": {
+            "description": "Where to read canonical attribute values in the host payload (dot paths). Only allow-listed canonical fields can be mapped.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "entityIds": { "$ref": "#/$defs/fieldPath" },
+              "entityType": { "$ref": "#/$defs/fieldPath" },
+              "topicId": { "$ref": "#/$defs/fieldPath" },
+              "facetId": { "$ref": "#/$defs/fieldPath" },
+              "valueIds": { "$ref": "#/$defs/fieldPath" },
+              "phase": { "$ref": "#/$defs/fieldPath" },
+              "flowId": { "$ref": "#/$defs/fieldPath" },
+              "stepId": { "$ref": "#/$defs/fieldPath" }
+            }
+          }
+        }
+      }
+    },
+    "momentRules": {
+      "description": "Declarative moment rules and derived-state parameters. Shape is provisional pending E4 review; values are always profile-supplied.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["derivedStates", "rules"],
+      "properties": {
+        "derivedStates": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hesitation", "inProgress"],
+          "properties": {
+            "hesitation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["params"],
+              "properties": {
+                "params": {
+                  "description": "Named, non-negative numeric thresholds interpreted by the AAA hesitation derivation.",
+                  "type": "object",
+                  "minProperties": 1,
+                  "propertyNames": { "pattern": "^[a-z][A-Za-z0-9]{0,63}$" },
+                  "additionalProperties": { "type": "number", "minimum": 0 }
+                }
+              }
+            },
+            "inProgress": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["transactionPageTypes", "idleTimeoutMs"],
+              "properties": {
+                "transactionPageTypes": {
+                  "$ref": "urn:aaa:contracts:v1:common#/$defs/idList",
+                  "minItems": 1
+                },
+                "idleTimeoutMs": { "type": "integer", "minimum": 1 }
+              }
+            }
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "when", "decision"],
+            "properties": {
+              "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+              "when": {
+                "description": "All listed conditions must hold.",
+                "type": "object",
+                "additionalProperties": false,
+                "minProperties": 1,
+                "properties": {
+                  "pageTypes": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+                  "signalKinds": {
+                    "type": "array",
+                    "items": { "$ref": "urn:aaa:contracts:v1:common#/$defs/rawSignalKind" },
+                    "uniqueItems": true
+                  },
+                  "derivedActive": {
+                    "type": "array",
+                    "items": { "$ref": "urn:aaa:contracts:v1:common#/$defs/derivedStateKind" },
+                    "uniqueItems": true
+                  }
+                }
+              },
+              "decision": { "$ref": "urn:aaa:contracts:v1:common#/$defs/momentDecision" },
+              "playbookIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" }
+            }
+          }
+        }
+      }
+    },
+    "playbooks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "evidenceIds", "eligibility", "starters"],
+        "properties": {
+          "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+          "kind": { "type": "string", "enum": ["helpful", "commercial"] },
+          "evidenceIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+          "offerIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+          "eligibility": {
+            "description": "All listed conditions must hold for the playbook to be eligible. Server-side authority.",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pageTypes": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+              "entityTypes": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+              "facetIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+              "topicIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" }
+            }
+          },
+          "starters": {
+            "description": "Pre-reviewed starter templates; also the template fallback.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["templateId", "role", "text"],
+              "properties": {
+                "templateId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+                "role": { "type": "string", "enum": ["primary", "followup"] },
+                "text": { "$ref": "urn:aaa:contracts:v1:common#/$defs/localizedText" }
+              }
+            }
+          }
+        },
+        "if": { "required": ["kind"], "properties": { "kind": { "const": "commercial" } } },
+        "then": {
+          "required": ["offerIds"],
+          "properties": { "offerIds": { "minItems": 1 } }
+        }
+      }
+    },
+    "offerSource": {
+      "description": "Approved, tenant-scoped offer catalog reference. Resolved server-side; no URLs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "catalogId"],
+      "properties": {
+        "type": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        "catalogId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" }
+      }
+    },
+    "evidenceSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceSetId", "version", "entries"],
+      "properties": {
+        "evidenceSetId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        "version": { "$ref": "urn:aaa:contracts:v1:common#/$defs/version" },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["evidenceId", "version", "summary"],
+            "properties": {
+              "evidenceId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+              "version": { "$ref": "urn:aaa:contracts:v1:common#/$defs/version" },
+              "summary": { "$ref": "urn:aaa:contracts:v1:common#/$defs/localizedText" },
+              "entityIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+              "topicIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+              "validUntil": { "$ref": "urn:aaa:contracts:v1:common#/$defs/timestamp" }
+            }
+          }
+        }
+      }
+    },
+    "contextMap": {
+      "description": "Allow-listed, bounded journey fields sent as Brand Concierge context. No PII and no client-derived commercial facts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxChars", "fields"],
+      "properties": {
+        "maxChars": { "type": "integer", "minimum": 1 },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "from"],
+            "properties": {
+              "key": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+              "from": {
+                "description": "Path into JourneyState. Raw signals cannot be exported directly.",
+                "type": "string",
+                "pattern": "^(locale|page|facets|derived)(\\.[A-Za-z0-9_]+)*$"
+              },
+              "maxChars": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "bcBinding": {
+      "description": "Brand Concierge binding by identifier only. No credentials.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["datastreamId"],
+      "properties": {
+        "datastreamId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        "instanceId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        "knowledgeIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+        "stylingId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" }
+      }
+    },
+    "successEvent": {
+      "description": "Per-profile visitor-success event, matched against raw signals.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "signalKind"],
+      "properties": {
+        "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        "signalKind": { "$ref": "urn:aaa:contracts:v1:common#/$defs/rawSignalKind" },
+        "pageTypes": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
+        "transactionPhase": { "$ref": "urn:aaa:contracts:v1:common#/$defs/transactionPhase" }
+      }
+    }
+  },
+  "$defs": {
+    "taxonomyEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+        "label": { "$ref": "urn:aaa:contracts:v1:common#/$defs/localizedText" }
+      }
+    },
+    "fieldPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*$"
+    }
+  }
+}
