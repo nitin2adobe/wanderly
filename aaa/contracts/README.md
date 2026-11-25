@@ -39,11 +39,10 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 
 **Approved (D10):** a versioned JSON Site Profile validated by JSON Schema. Its canonical schemas belong in the private AAA repository, with a versioned copy consumed by Wanderly.
 
-**User-approved (D6 starter roles, demo):** whenever starters are shown, there is exactly one primary, and it is helpful. At most one starter may be promotional (`commercial`). The schema text inherited from the canonical draft still says "provisional cap"; that wording is left unchanged to stay byte-identical to the draft.
+**User-approved (D6 starter caps, demo):** StarterResult allows at most 3 starters in total. Whenever starters are shown, there is exactly one primary, and it is helpful. At most one starter may be promotional (`commercial`). All three caps are confirmed and enforced by the schema.
 
 The following encode PRD v2 recommendations that are **not user-approved**. Changing them later only needs a minor or major bump.
 
-- **D6 (starter count):** StarterResult allows at most 3 starters in total.
 - **D16 (suppression):** not encoded. The contract only carries the tri-state `inProgress` and profile-supplied timeouts.
 - **Other choices made here:** `transaction.step` uses `phase` values `start`, `step` and `complete`. A commercial playbook must list `offerIds`. A fallback result must contain template starters and a reason code. An abstain result must contain no starters or offers and must have a reason code.
 
