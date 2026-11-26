@@ -117,6 +117,46 @@ export function createConciergeClient({
       queue = request.then(() => undefined, () => undefined);
       return request;
     },
+    /**
+     * Replaces a personalized welcome even while the chat is hidden.
+     * Re-bootstrapping also discards the visible transcript; manual chat remains available.
+     */
+    resetWelcome(examples: readonly string[]): Promise<'reset' | 'unchanged'> {
+      const questions = welcomeQuestions(undefined, examples);
+      const examplesKey = JSON.stringify(questions);
+      const request = queue.then(() => new Promise<'reset' | 'unchanged'>((resolve, reject) => {
+        if (disposed || !initialized || (configuredQuestion === undefined && configuredExamples === examplesKey)) { resolve('unchanged'); return; }
+        let settled = false;
+        const finish = (result?: 'reset', error?: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (error) reject(error);
+          else resolve(result!);
+        };
+        const timeout = setTimeout(() => finish(undefined, new Error('Brand Concierge did not acknowledge the welcome reset.')), timeoutMs);
+        // Until acknowledged, the previous welcome must not be treated as configured.
+        configuredExamples = undefined;
+        const receive = (event: ConciergeClientEvent) => {
+          if (disposed) return;
+          if (event.eventType === 'query:submitted') hasConversation = true;
+          if (event.eventType === 'history:cleared') hasConversation = false;
+          try { onEvent?.(event); }
+          catch (error) { console.error('Unable to record Brand Concierge lifecycle:', error); }
+          if (event.eventType === 'error:occurred') finish(undefined, new Error('Brand Concierge reported an SDK or service error.'));
+          else if (event.eventType === 'webclient:initialized') {
+            hasConversation = false;
+            configuredQuestion = undefined;
+            configuredExamples = examplesKey;
+            finish('reset');
+          }
+        };
+        Promise.resolve().then(() => bootstrap(receive, undefined, questions))
+          .catch(error => finish(undefined, error instanceof Error ? error : new Error('Brand Concierge bootstrap failed.')));
+      }));
+      queue = request.then(() => undefined, () => undefined);
+      return request;
+    },
     cancel() { cancellationEpoch++; cancelActive?.(); },
     dispose() { disposed = true; cancelActive?.(); },
   };

@@ -2,7 +2,7 @@
 
 Versioned JSON Schema (draft 2020-12) contracts for the Adaptive Assistance Agent. AAA is site-agnostic. Wanderly is one reference deployment, so these files contain no site or domain vocabulary. A test enforces this.
 
-**Status: draft v1, not canonical or frozen.** The canonical schemas belong in the separate private Python AAA repository; Wanderly will consume a versioned copy. The files here are a proposed draft, not that canonical source or an established consumer copy. The private repository exists, but its addition to this Project was cancelled. Migration, the versioned Wanderly copy, and the consumer review gate below remain outstanding.
+**Status: v1 locally frozen at `schemaVersion` `1.0.0`; not released.** The canonical schemas live in the separate private Python AAA repository. The six files in `v1/` are a vendored consumer copy whose SHA-256 hashes match canonical commit `9d94ca7258442fc9b7914332f0ff10ba7e9e8f9b`. Do not edit them here; changes are made canonically and re-vendored. No release tag or version-pinning manifest exists yet.
 
 | Contract | Schema | Producer → consumer |
 |---|---|---|
@@ -24,7 +24,9 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 - **Raw versus derived**: CanonicalSignal holds only the six raw kinds. `hesitation` and `inProgress` exist only in `JourneyState.derived`, as tri-state (`active` / `inactive` / `uncertain`) values with their basis signals.
 - **Minimised free text; PII is a producer obligation**: IDs follow `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`. Facet values are profile-declared IDs. Unknown properties are rejected. These rules reduce the risk of PII exposure, but no schema or ID pattern can prove that an identifier is not personal data (for example, `user.name.example` matches the pattern); producers and site profiles must emit opaque, non-PII IDs. Only starter text and profile labels are text, and they must be rendered as text, never as HTML.
 - **No tenant identity or URLs from clients**: StarterRequest has no tenant field. Tenant identity comes from the server-issued token. Profiles and requests have no URL fields.
-- **No fixed thresholds**: hesitation parameters and the `inProgress` idle timeout are required profile values with no defaults.
+- **Profile thresholds**: hesitation parameters are profile-supplied. `inProgress.idleTimeoutMs` is optional legacy configuration with provisional use; inactivity alone must never end `inProgress`. `momentRules.exposureBudget` is optional and, when present, contains at least one nonnegative integer limit (`maxNudgesPerSession`, `minNudgeIntervalMs`). Zero nudges means no nudges.
+- **Signal mappings**: a string reads a host payload dot path; `{ "value": ... }` supplies a typed fixed value. Adapters must reject mapping/adapter conflicts with a diagnostic and validate the resulting signal.
+- **Visitor success**: `successEvent` is optional; absence means unavailable, not success. Its phase is allowed only for `transaction.step`, and cannot be `cancel`. The illustrative Wanderly profile omits it because the local booking UI only prepares a request, without reservation or payment.
 
 ## Semantics that JSON Schema cannot express (consumer checks)
 
@@ -32,6 +34,9 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 - In a StarterRequest, the journey's `sessionId`, `profileVersion`, `locale` and `page` must be echoed in the StarterResult. The client drops results that no longer match.
 - `seq` and `pageRevision` are monotonic per session and per page instance.
 - `locale` must be in the profile's `locales.supported`.
+- `complete` and `cancel` are reported transaction phases, not proof of an outcome. Consumers must confirm completion/cancellation before ending `inProgress` and must never classify cancellation as visitor success, even when a configured transaction success matcher omits its phase.
+- The generic exposure-budget schema validates shape/ranges, not demo policy. The demo loader/consumer must reject configuration weaker than D16 and disable AAA safely with a diagnostic. Omitted budgets or fields do not waive safeguards: at most two nudges per session, at least 600000 ms apart, and none after dismissal. The schema validator does not do this; the Site Profile loader in [`../profile/loader.ts`](../profile/loader.ts) (AAA-12) does. It does not enforce runtime nudge counting, intervals or dismissal (AAA-16).
+- `StarterResult` validation additionally checks that each starter's `offerId` appears in result `offerIds`. Offer approval, eligibility, provenance and freshness still require consumer checks.
 
 ## Decisions
 
@@ -41,14 +46,13 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 
 **User-approved (D6 starter caps, demo):** StarterResult allows at most 3 starters in total. Whenever starters are shown, there is exactly one primary, and it is helpful. At most one starter may be promotional (`commercial`). All three caps are confirmed and enforced by the schema.
 
-The following encode PRD v2 recommendations that are **not user-approved**. Changing them later only needs a minor or major bump.
+**User-approved (D16, demo):** at most two nudges per session, at least ten minutes apart, none after dismissal; `inProgress` ends only on confirmed completion or cancellation, not inactivity or page exit. These are consumer/loader obligations, not demo-specific numeric constraints in the generic schema.
 
-- **D16 (suppression):** not encoded. The contract only carries the tri-state `inProgress` and profile-supplied timeouts.
-- **Other choices made here:** `transaction.step` uses `phase` values `start`, `step` and `complete`. A commercial playbook must list `offerIds`. A fallback result must contain template starters and a reason code. An abstain result must contain no starters or offers and must have a reason code.
+**Other provisional contract choices:** `transaction.step` uses shared phases `start`, `step`, `complete` and `cancel`. A commercial playbook must list `offerIds`. A fallback result must contain template starters and a reason code. An abstain result must contain no starters or offers and must have a reason code. These draft choices do not resolve remaining consumer review or limit decisions.
 
 ## Review gate (AAA-3 acceptance)
 
-The owners of these workstreams have **not yet reviewed** the contracts. Their review of the canonical contracts is required before freezing:
+Per the canonical repository, the E2, E3/E4, E5, E6 and E7 owners passed contract-representation review for the frozen revision. That covers representation only, not runtime sign-off. The review topics were:
 
 - **E2 (signal capture):** the CanonicalSignal kind payloads, `source`, and whether JourneyState should embed raw signals or keep a bounded summary.
 - **E5 (starter service):** the StarterRequest payload size, given that it embeds the journey; the StarterResult outcome rules and reason codes.
@@ -59,7 +63,7 @@ The owners of these workstreams have **not yet reviewed** the contracts. Their r
 ## Run the checks
 
 ```sh
-node --experimental-strip-types --test aaa/contracts/*.test.ts
+node --experimental-strip-types --test aaa/contracts/*.test.ts aaa/profile/*.test.ts
 ```
 
 The fixtures in `examples/` (travel and retail) are illustrative. They are not the AAA-14 or AAA-15 profiles.

@@ -45,14 +45,15 @@ export const travelProfile = {
   signalMap: [
     { id: 'pv', source: 'track', match: 'page.viewed', kind: 'page.viewed', provenance: 'explicit' },
     { id: 'pkg-view', source: 'data-attribute', match: 'data-aaa-entity', kind: 'entity.viewed', provenance: 'explicit', fields: { entityIds: 'id', entityType: 'type' } },
-    { id: 'compare', source: 'acdl', match: 'compare.view', kind: 'entity.compared', provenance: 'explicit', fields: { entityIds: 'eventInfo.ids' } },
+    { id: 'compare', source: 'acdl', match: 'compare.view', kind: 'entity.compared', provenance: 'explicit', fields: { entityIds: 'eventInfo.ids', entityType: { value: 'destination' } } },
     { id: 'booking-step', source: 'track', match: 'booking.step', kind: 'transaction.step', provenance: 'explicit', fields: { phase: 'phase', stepId: 'step' } },
   ],
   momentRules: {
     derivedStates: {
       hesitation: { params: { minCompareCount: 1, minInfoSought: 1 } },
-      inProgress: { transactionPageTypes: ['booking'], idleTimeoutMs: 900000 },
+      inProgress: { transactionPageTypes: ['booking'] },
     },
+    exposureBudget: { maxNudgesPerSession: 2, minNudgeIntervalMs: 600000 },
     rules: [{ id: 'compare-then-info', when: { pageTypes: ['package-detail'], derivedActive: ['hesitation'] }, decision: 'ASSIST', playbookIds: ['compare-help', 'visa-help', 'upgrade-offer'] }],
   },
   playbooks: [
@@ -70,7 +71,6 @@ export const travelProfile = {
   },
   contextMap: { maxChars: 600, fields: [{ key: 'pageType', from: 'page.pageType' }, { key: 'hesitating', from: 'derived.hesitation.status' }] },
   bcBinding: { datastreamId: 'demo-datastream', knowledgeIds: ['wanderly-kb'] },
-  successEvent: { id: 'booking-complete', signalKind: 'transaction.step', transactionPhase: 'complete' },
 } satisfies SiteProfile;
 
 export const travelRequest = {
@@ -83,7 +83,7 @@ export const travelResult = {
   generatedAt: '2026-11-25T10:02:02Z', expiresAt: '2026-11-25T10:07:02Z', playbookId: 'compare-help',
   starters: [
     { starterId: 'st-1', role: 'primary', kind: 'helpful', text: 'How do Bali and the Maldives compare for my dates?', templateId: 't-compare' },
-    { starterId: 'st-2', role: 'followup', kind: 'commercial', text: 'Is there an early booking offer for this package?', templateId: 't-offer' },
+    { starterId: 'st-2', role: 'followup', kind: 'commercial', text: 'Is there an early booking offer for this package?', templateId: 't-offer', offerId: 'offer-early-bird' },
   ],
   evidenceIds: ['ev-bali'], offerIds: ['offer-early-bird'], reasonCodes: [],
 } satisfies StarterResult;

@@ -8,7 +8,7 @@
   "required": [
     "schemaVersion", "profileId", "profileVersion", "tenantId", "locales",
     "taxonomy", "facets", "signalMap", "momentRules", "playbooks",
-    "offerSource", "evidenceSet", "contextMap", "bcBinding", "successEvent"
+    "offerSource", "evidenceSet", "contextMap", "bcBinding"
   ],
   "properties": {
     "schemaVersion": { "$ref": "urn:aaa:contracts:v1:common#/$defs/schemaVersion" },
@@ -98,18 +98,18 @@
           "kind": { "$ref": "urn:aaa:contracts:v1:common#/$defs/rawSignalKind" },
           "provenance": { "$ref": "urn:aaa:contracts:v1:common#/$defs/provenance" },
           "fields": {
-            "description": "Where to read canonical attribute values in the host payload (dot paths). Only allow-listed canonical fields can be mapped.",
+            "description": "Map allow-listed canonical fields using host payload dot paths or fixed profile values. Unmapped fields may be supplied by the adapter. If adapter and mapping values conflict, reject the signal with a diagnostic; produced signals must still validate.",
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "entityIds": { "$ref": "#/$defs/fieldPath" },
-              "entityType": { "$ref": "#/$defs/fieldPath" },
-              "topicId": { "$ref": "#/$defs/fieldPath" },
-              "facetId": { "$ref": "#/$defs/fieldPath" },
-              "valueIds": { "$ref": "#/$defs/fieldPath" },
-              "phase": { "$ref": "#/$defs/fieldPath" },
-              "flowId": { "$ref": "#/$defs/fieldPath" },
-              "stepId": { "$ref": "#/$defs/fieldPath" }
+              "entityIds": { "$ref": "#/$defs/idListMapping" },
+              "entityType": { "$ref": "#/$defs/idMapping" },
+              "topicId": { "$ref": "#/$defs/idMapping" },
+              "facetId": { "$ref": "#/$defs/idMapping" },
+              "valueIds": { "$ref": "#/$defs/idListMapping" },
+              "phase": { "$ref": "#/$defs/phaseMapping" },
+              "flowId": { "$ref": "#/$defs/idMapping" },
+              "stepId": { "$ref": "#/$defs/idMapping" }
             }
           }
         }
@@ -143,15 +143,29 @@
             "inProgress": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["transactionPageTypes", "idleTimeoutMs"],
+              "required": ["transactionPageTypes"],
               "properties": {
                 "transactionPageTypes": {
                   "$ref": "urn:aaa:contracts:v1:common#/$defs/idList",
                   "minItems": 1
                 },
-                "idleTimeoutMs": { "type": "integer", "minimum": 1 }
+                "idleTimeoutMs": {
+                  "description": "Optional legacy threshold; its use is provisional. Inactivity alone must not end inProgress.",
+                  "type": "integer",
+                  "minimum": 1
+                }
               }
             }
+          }
+        },
+        "exposureBudget": {
+          "description": "Optional per-session nudge limits. The generic schema checks shape and nonnegative integer ranges only. For the demo, the consumer/loader must reject configuration weaker than the D16 safeguards and disable AAA safely with a diagnostic. Omitted values do not remove applicable safeguards. A maxNudgesPerSession of 0 means no nudges.",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "maxNudgesPerSession": { "type": "integer", "minimum": 0 },
+            "minNudgeIntervalMs": { "type": "integer", "minimum": 0 }
           }
         },
         "rules": {
@@ -307,15 +321,20 @@
       }
     },
     "successEvent": {
-      "description": "Per-profile visitor-success event, matched against raw signals.",
+      "description": "Optional per-profile visitor-success event, matched against raw signals. If omitted, visitor success is reported as unavailable. A cancellation is never visitor success.",
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "signalKind"],
+      "if": { "not": { "properties": { "signalKind": { "const": "transaction.step" } } } },
+      "then": { "not": { "required": ["transactionPhase"] } },
       "properties": {
         "id": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
         "signalKind": { "$ref": "urn:aaa:contracts:v1:common#/$defs/rawSignalKind" },
         "pageTypes": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" },
-        "transactionPhase": { "$ref": "urn:aaa:contracts:v1:common#/$defs/transactionPhase" }
+        "transactionPhase": {
+          "$ref": "urn:aaa:contracts:v1:common#/$defs/transactionPhase",
+          "not": { "const": "cancel" }
+        }
       }
     }
   },
@@ -332,6 +351,39 @@
     "fieldPath": {
       "type": "string",
       "pattern": "^[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z0-9_-]+)*$"
+    },
+    "idMapping": {
+      "oneOf": [
+        { "$ref": "#/$defs/fieldPath" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": { "value": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" } }
+        }
+      ]
+    },
+    "idListMapping": {
+      "oneOf": [
+        { "$ref": "#/$defs/fieldPath" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": { "value": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList" } }
+        }
+      ]
+    },
+    "phaseMapping": {
+      "oneOf": [
+        { "$ref": "#/$defs/fieldPath" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": { "value": { "$ref": "urn:aaa:contracts:v1:common#/$defs/transactionPhase" } }
+        }
+      ]
     }
   }
 }

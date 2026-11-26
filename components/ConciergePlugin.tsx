@@ -8,6 +8,8 @@ import { conciergePageDestination, contextualHandoff } from '@/lib/concierge-con
 import { getComparisonSlugs } from '@/components/DestinationComparison';
 import { buildHandoff, validateHandoff, type ConciergeHandoff } from '@/lib/concierge-handoff';
 import { EVENT_UPDATED } from '@/lib/events';
+import { getAaaRuntime, isAaaEnabled } from '@/lib/aaa-runtime';
+import { useAaaAvailability } from '@/components/AaaConsent';
 import { buildJourneyContext } from '@/lib/journey-context';
 import { getActivationMode, ACTIVATION_MODE_CHANGED } from '@/lib/activation-mode';
 import { proposeAssistance } from '@/lib/activation-proposal';
@@ -24,6 +26,7 @@ function sessionEvents() {
 }
 
 export default function ConciergePlugin({ connector = adobeConnector, catalogVersion }: { connector?: ConciergeConnector; catalogVersion?: string }) {
+  const aaa = useAaaAvailability();
   const pathname = usePathname();
   const [invitation, setInvitation] = useState<ConciergeHandoff | null>(null);
   const [failedInvitation, setFailedInvitation] = useState<ConciergeHandoff | null>(null);
@@ -35,6 +38,7 @@ export default function ConciergePlugin({ connector = adobeConnector, catalogVer
   invitationRef.current = invitation;
 
   const triggerChat = useCallback(async (handoff: ConciergeHandoff, accepted = false, source = 'unknown') => {
+    if (!isAaaEnabled()) return;
     if (activeRequest.current) return;
     const events = sessionEvents().events;
     const destination = conciergePageDestination(window.location.pathname, window.location.search);
@@ -79,7 +83,12 @@ export default function ConciergePlugin({ connector = adobeConnector, catalogVer
     // Never create (or count) an invitation the visitor cannot see.
     if (isHiddenRoute(window.location.pathname)) return;
     const { sid, events } = sessionEvents();
-    if (!sid) return;
+    if (!sid) {
+      invitationRef.current = null;
+      setInvitation(null);
+      setFailedInvitation(null);
+      return;
+    }
     if (activeRequest.current) return;
     const pending = hasPendingInvitation(events);
     const current = invitationRef.current;
@@ -131,6 +140,15 @@ export default function ConciergePlugin({ connector = adobeConnector, catalogVer
 
   useEffect(() => {
     const schedule = (event?: Event) => {
+      if (!isAaaEnabled()) {
+        activeRequest.current?.controller.abort();
+        clearTimeout(timer.current);
+        invitationRef.current = null;
+        automaticHandoff.current = null;
+        setInvitation(null);
+        setFailedInvitation(null);
+        return;
+      }
       const request = activeRequest.current;
       if (request && (getSessionId() !== request.sessionId || isHiddenRoute(window.location.pathname) || brandIdForPath(window.location.pathname) !== request.brand || (request.activationMode !== undefined && getActivationMode() !== request.activationMode) || isForwardProgress(buildJourneyContext(sessionEvents().events)))) request.controller.abort();
       const detail = event instanceof CustomEvent ? event.detail : undefined;
@@ -143,12 +161,14 @@ export default function ConciergePlugin({ connector = adobeConnector, catalogVer
     window.addEventListener('storage', schedule);
     window.addEventListener(ACTIVATION_MODE_CHANGED, schedule);
     window.addEventListener(POLICY_SETTINGS_CHANGED, schedule);
+    const unsubscribeConsent = getAaaRuntime().subscribe(() => schedule());
     return () => {
       clearTimeout(timer.current);
       window.removeEventListener(EVENT_UPDATED, schedule);
       window.removeEventListener('storage', schedule);
       window.removeEventListener(ACTIVATION_MODE_CHANGED, schedule);
       window.removeEventListener(POLICY_SETTINGS_CHANGED, schedule);
+      unsubscribeConsent();
     };
   }, [evaluate, pathname]);
 
@@ -196,7 +216,7 @@ export default function ConciergePlugin({ connector = adobeConnector, catalogVer
   const chatAvailable = !!invitation && isCurrentBrand && connector.supportsBrand(invitation.brand);
   return (
     <>
-      {invitation && copy && (
+      {aaa.enabled && invitation && copy && (
         <div className="conciergeBalloon" role="dialog" aria-label="Concierge suggestion">
           <div className="conciergeBalloonHead"><span className="conciergeAvatar" aria-hidden="true">{(brand?.displayName ?? 'B').charAt(0)}</span><strong>{brand?.displayName ?? 'Brand'} concierge</strong></div>
           <h3>{copy.headline}</h3>

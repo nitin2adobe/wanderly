@@ -41,13 +41,13 @@ export const retailProfile = {
   facets: [{ id: 'brand', values: [{ id: 'volt' }, { id: 'nordic' }] }, { id: 'priority', values: [{ id: 'warranty' }, { id: 'price' }] }],
   signalMap: [
     { id: 'acdl-page', source: 'acdl', match: 'page:loaded', kind: 'page.viewed', provenance: 'explicit' },
-    { id: 'acdl-compare', source: 'acdl', match: 'compare:opened', kind: 'entity.compared', provenance: 'explicit', fields: { entityIds: 'skus' } },
+    { id: 'acdl-compare', source: 'acdl', match: 'compare:opened', kind: 'entity.compared', provenance: 'explicit', fields: { entityIds: 'skus', entityType: { value: 'product' } } },
     { id: 'checkout', source: 'acdl', match: 'checkout:step', kind: 'transaction.step', provenance: 'explicit', fields: { phase: 'phase' } },
   ],
   momentRules: {
     derivedStates: {
       hesitation: { params: { minCompareCount: 2, dwellMs: 45000 } },
-      inProgress: { transactionPageTypes: ['checkout'], idleTimeoutMs: 600000 },
+      inProgress: { transactionPageTypes: ['checkout'] },
     },
     rules: [{ id: 'compare-returns', when: { signalKinds: ['entity.compared', 'info.sought'] }, decision: 'ASSIST', playbookIds: ['returns-help'] }],
   },

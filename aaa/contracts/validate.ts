@@ -39,7 +39,7 @@ export const SUPPORTED_KEYWORDS = new Set([
   'minLength', 'maxLength', 'pattern', 'minimum',
   'properties', 'required', 'additionalProperties', 'propertyNames', 'minProperties',
   'items', 'minItems', 'maxItems', 'uniqueItems', 'contains', 'minContains', 'maxContains',
-  'allOf', 'anyOf', 'if', 'then',
+  'allOf', 'anyOf', 'oneOf', 'not', 'if', 'then',
 ]);
 
 const registry = new Map<string, Schema>(allSchemas.map(s => [s.$id, s as Schema]));
@@ -128,6 +128,8 @@ function check(schema: Schema, value: unknown, path: string, baseId: string, err
 
   for (const sub of s.allOf ?? []) check(sub, value, path, baseId, errors);
   if (s.anyOf && !s.anyOf.some((sub: Schema) => passes(sub, value, baseId))) fail('does not match any allowed shape');
+  if (s.oneOf && s.oneOf.filter((sub: Schema) => passes(sub, value, baseId)).length !== 1) fail('does not match exactly one allowed shape');
+  if (s.not !== undefined && passes(s.not, value, baseId)) fail('must not match the disallowed shape');
   if (s.if !== undefined && s.then !== undefined && passes(s.if, value, baseId)) check(s.then, value, path, baseId, errors);
 }
 
@@ -141,5 +143,14 @@ export function validateContract<N extends ContractName>(name: N, value: unknown
   const schema = contractSchemas[name];
   const errors: ContractDiagnostic[] = [];
   check(schema as Schema, value, '', schema.$id, errors);
+  // JSON Schema cannot compare a starter's offerId with result offerIds.
+  if (name === 'StarterResult' && errors.length === 0) {
+    const result = value as StarterResult;
+    result.starters.forEach((starter, index) => {
+      if (hasOwn(starter, 'offerId') && starter.offerId !== undefined && !result.offerIds.includes(starter.offerId)) {
+        errors.push({ path: `/starters/${index}/offerId`, message: 'must appear in result offerIds' });
+      }
+    });
+  }
   return errors.length ? { valid: false, errors: errors.map(e => ({ ...e, path: e.path || '/' })) } : { valid: true, value: value as ContractTypes[N] };
 }

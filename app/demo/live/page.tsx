@@ -7,7 +7,7 @@ import PresenterToggle from '@/components/PresenterToggle';
 import PolicyControls from '@/components/PolicyControls';
 import RulesVsAI from '@/components/RulesVsAI';
 import { EVENT_UPDATED, type WanderlyEvent } from '@/lib/events';
-import { getEvents, getLatestSessionId } from '@/lib/tracking';
+import { getCurrentJourney } from '@/lib/tracking';
 
 /** Customer site on the left, the plugin's live decision trace on the right. */
 export default function LiveDemoPage() {
@@ -17,11 +17,8 @@ export default function LiveDemoPage() {
   const [events, setEvents] = useState<WanderlyEvent[]>([]);
 
   useEffect(() => {
-    // The embedded site has its own tab session; follow whichever session wrote events last.
-    const refresh = () => {
-      const sid = getLatestSessionId();
-      setEvents(getEvents().filter(e => e.sessionId === sid));
-    };
+    // The same-origin iframe shares this tab's sessionStorage, so its journey is this tab's session.
+    const refresh = () => setEvents(getCurrentJourney().events);
     refresh();
     window.addEventListener(EVENT_UPDATED, refresh);
     window.addEventListener('storage', refresh);

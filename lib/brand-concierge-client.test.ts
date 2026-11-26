@@ -197,3 +197,50 @@ test('manual contextual opening is permitted when proactive opening is ineligibl
   assert.equal((await client.open('Help with my booking', undefined, false)).status, 'opened');
   assert.deepEqual(questions, ['Help with my booking']);
 });
+
+test('welcome reset replaces a hidden personalized welcome with defaults', async () => {
+  const f = fixture();
+  assert.equal(await f.client.resetWelcome(['Default']), 'unchanged');
+  await f.client.open('Bali entry?', undefined, false, ['Bali transfers?']);
+  f.leavePage();
+  assert.equal(await f.client.resetWelcome(['Default']), 'reset');
+  assert.deepEqual(f.suggestions.at(-1), undefined);
+  assert.deepEqual(f.examples.at(-1), ['Default']);
+  assert.equal(await f.client.resetWelcome(['Default']), 'unchanged');
+  assert.equal(f.examples.length, 2);
+});
+
+test('revocation replaces personalized examples after a submitted conversation and permits manual chat', async () => {
+  const f = fixture({ legacy: true });
+  await f.client.open('Bali entry?', undefined, false, ['Bali transfers?']);
+  f.emit({ eventType: 'query:submitted', data: { query: 'Visitor question' } });
+
+  assert.equal(await f.client.resetWelcome(['Default']), 'reset');
+  assert.deepEqual(f.suggestions, ['Bali entry?', undefined]);
+  assert.deepEqual(f.examples.at(-1), ['Default']);
+  assert.equal(await f.client.resetWelcome(['Default']), 'unchanged');
+  assert.equal((await f.client.open(undefined, undefined, false, ['Default'])).status, 'existing');
+  assert.deepEqual(f.messages, [undefined, undefined]);
+
+  f.emit({ eventType: 'query:submitted', data: { query: 'New manual question' } });
+  assert.equal((await f.client.open('Another suggestion', undefined, false)).status, 'existing');
+  f.emit({ eventType: 'history:cleared' });
+  assert.equal((await f.client.open('Another suggestion', undefined, false)).status, 'opened');
+});
+
+test('welcome reset clears the previous conversation state after re-bootstrap', async () => {
+  const f = fixture();
+  await f.client.open('Personalized question');
+  f.emit({ eventType: 'query:submitted', data: { query: 'Visitor question' } });
+  await f.client.resetWelcome(['Default']);
+  assert.equal((await f.client.open('New suggestion', undefined, false)).status, 'opened');
+});
+
+test('a failed welcome reset is retried rather than treated as configured', async () => {
+  const f = fixture();
+  await f.client.open('Bali entry?');
+  f.fail(new Error('boom'));
+  await assert.rejects(f.client.resetWelcome(['Default']), /boom/);
+  f.fail();
+  assert.equal(await f.client.resetWelcome(['Default']), 'reset');
+});

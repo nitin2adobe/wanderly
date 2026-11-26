@@ -90,8 +90,9 @@
       "enum": ["hesitation", "inProgress"]
     },
     "transactionPhase": {
+      "description": "A reported transaction phase. Completion and cancellation end inProgress only when confirmed by the consumer.",
       "type": "string",
-      "enum": ["start", "step", "complete"]
+      "enum": ["start", "step", "complete", "cancel"]
     },
     "momentDecision": {
       "type": "string",

@@ -83,6 +83,30 @@ Step 1 was UI only; instrumentation (Step 2) and assistance decisioning (Step 3)
 
 ## Brand Concierge
 
+### Assistance privacy
+
+The demo consent banner is used only when no host CMP adapter is present.
+Sites with a CMP must install `window.aaaConsentAuthority` before AAA loads,
+with `get()` returning `pending`, `granted` or `denied` and `subscribe(listener)`
+returning an unsubscribe function. An invalid adapter fails closed. AAA does not
+configure a host-owned Web SDK; its page-context transport therefore needs a
+separate host integration. Manual chat follows Brand Concierge's own policy.
+
+Journey events are minimized to approved catalog values and typed metadata.
+They are kept per browser tab in `sessionStorage`, rather than in a shared
+journey store. A tab's session expires after 30 minutes of inactivity: reads enforce
+expiry, and a sweep deletes it each minute and whenever the tab becomes visible
+again. Tabs purge their own journeys when they receive a decline. Older builds' shared
+`localStorage` journey key is removed on load. Background tabs may have their
+timers throttled or suspended, so deletion can be delayed until the tab next
+runs. Closing a tab normally discards its `sessionStorage`, but browser session
+restore, "duplicate tab", or opening a same-origin tab with an opener can copy it
+(the new tab then continues as a separate copy), and physical deletion from disk
+is not guaranteed.
+Only catalog-derived page details are added to the AAA context. The separate
+Concierge Service forwarding path remains unverified, and the demo BCOS
+configuration may still read the Web SDK's standard URL including query data.
+
 On Wanderly customer pages, a policy-approved `ASSIST` decision opens the Adobe
 Brand Concierge Web Client with a **suggested question, not an automatically sent
 visitor message**. This intentional default change uses Adobe's documented
@@ -96,7 +120,7 @@ Destination, package-detail and destination-filtered information pages scope
 questions to the current destination only. For example, Japan pages do not reuse
 an earlier Bali/Maldives comparison or Bali FAQ. An open window updates its
 browsing-based question on destination navigation without automatically sending
-it; the manual launcher also supplies a current-destination suggestion.
+it; after assistance consent the manual launcher also supplies a current-destination suggestion.
 Every manual opening recomputes its suggestion from the current session's last
 eight meaningful browsing signals: approved FAQ clicks, stay disclosures,
 package/price views and comparison actions. Recent information-selector changes
@@ -144,11 +168,11 @@ acceptance are distinct. A response-completed event is not proof of correctness.
 Closing or progression cancels a pending local request. The Volt Electronics
 fixture still has no live Adobe concierge.
 
-The trace's **Active decision** comes from the plugin's recorded evaluation for
-the current journey and selected mode (`ASSISTANCE_EVALUATED`). In AI-assisted
-mode, a rules-baseline `ASSIST` does not open chat when the active AI returns
-`WAIT` or `SILENT`; the trace now shows that actual decision and source. Until an
-evaluation arrives it shows "Awaiting active evaluation", not the rules result.
+The trace's **Active decision** cannot currently replay the AI decision: free-text
+model decisions and full context snapshots are excluded from stored evaluations.
+In AI-assisted mode, a rules-baseline `ASSIST` does not open chat when the active
+AI returns `WAIT` or `SILENT`; the trace shows "Awaiting active evaluation" rather
+than presenting the rules result as the AI decision.
 The per-signal timeline remains explicitly labelled as the rules baseline.
 The current policy gate can block further invitations after a chat has already
 opened. Use **Rules** and replay a fresh **Right moment** scenario for the
@@ -241,16 +265,16 @@ The prototype uses remote travel imagery in `lib/data.ts`. Replace those URLs wi
 Step 2 adds anonymous browser-session instrumentation and an internal journey inspector.
 
 - A session ID is stored in `sessionStorage` (new browser tab/session = new anonymous session).
-- The POC's journey events are stored locally in `localStorage`. Adobe's Web SDK and chat handle their own data separately.
+- The POC's journey events are stored per tab in `sessionStorage`. Adobe's Web SDK and chat handle their own data separately.
 - Route changes emit `PAGE_VIEW` plus semantic events such as `DESTINATION_VIEW`, `COMPARE_VIEW`, `TRAVEL_INFO_VIEW`, and `BOOKING_START`.
-- Open `/agent` in a second tab to inspect the live session event timeline.
+- Open `/agent` in the same tab (journey data is per tab) or use `/demo/live` to inspect the session event timeline.
 - Click **New session** in `/agent` to clear the current session and start a fresh test journey.
 
 ### Step 2 acceptance journey
 
-1. Open `/agent` in one tab.
-2. Open `/` in another tab.
-3. Browse `Bali -> Maldives -> Compare -> Maldives`.
+1. Open `/` and allow assistance.
+2. Browse `Bali -> Maldives -> Compare -> Maldives` in the same tab.
+3. Open `/agent` in that tab.
 4. Confirm the inspector shows the route/page events and semantic journey signals.
 
 AI `SILENT / WAIT / ASSIST` reasoning is deliberately deferred to Step 3.

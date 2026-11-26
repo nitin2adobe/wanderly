@@ -6,7 +6,7 @@ export const rawSignalKinds = ['page.viewed', 'entity.viewed', 'entity.compared'
 export const derivedStateKinds = ['hesitation', 'inProgress'] as const;
 export const provenances = ['explicit', 'inferred'] as const;
 export const signalSources = ['track', 'data-attribute', 'acdl'] as const;
-export const transactionPhases = ['start', 'step', 'complete'] as const;
+export const transactionPhases = ['start', 'step', 'complete', 'cancel'] as const;
 export const momentDecisions = ['SILENT', 'WAIT', 'ASSIST'] as const;
 export const starterOutcomes = ['assist', 'abstain', 'fallback'] as const;
 
@@ -79,6 +79,7 @@ export type JourneyState = {
 
 type TaxonomyEntry = { id: Id; label?: LocalizedText };
 type FieldPath = string;
+type FieldMapping<T> = FieldPath | { value: T };
 
 export type SiteProfile = {
   schemaVersion: SchemaVersion;
@@ -100,13 +101,23 @@ export type SiteProfile = {
     match: string;
     kind: RawSignalKind;
     provenance: Provenance;
-    fields?: Partial<Record<'entityIds' | 'entityType' | 'topicId' | 'facetId' | 'valueIds' | 'phase' | 'flowId' | 'stepId', FieldPath>>;
+    fields?: {
+      entityIds?: FieldMapping<Id[]>;
+      entityType?: FieldMapping<Id>;
+      topicId?: FieldMapping<Id>;
+      facetId?: FieldMapping<Id>;
+      valueIds?: FieldMapping<Id[]>;
+      phase?: FieldMapping<TransactionPhase>;
+      flowId?: FieldMapping<Id>;
+      stepId?: FieldMapping<Id>;
+    };
   }[];
   momentRules: {
     derivedStates: {
       hesitation: { params: Record<string, number> };
-      inProgress: { transactionPageTypes: Id[]; idleTimeoutMs: number };
+      inProgress: { transactionPageTypes: Id[]; idleTimeoutMs?: number };
     };
+    exposureBudget?: { maxNudgesPerSession: number; minNudgeIntervalMs?: number } | { maxNudgesPerSession?: number; minNudgeIntervalMs: number };
     rules: {
       id: Id;
       when: { pageTypes?: Id[]; signalKinds?: RawSignalKind[]; derivedActive?: DerivedStateKind[] };
@@ -130,7 +141,10 @@ export type SiteProfile = {
   };
   contextMap: { maxChars: number; fields: { key: Id; from: string; maxChars?: number }[] };
   bcBinding: { datastreamId: Id; instanceId?: Id; knowledgeIds?: Id[]; stylingId?: Id };
-  successEvent: { id: Id; signalKind: RawSignalKind; pageTypes?: Id[]; transactionPhase?: TransactionPhase };
+  successEvent?: { id: Id; pageTypes?: Id[] } & (
+    | { signalKind: 'transaction.step'; transactionPhase?: Exclude<TransactionPhase, 'cancel'> }
+    | { signalKind: Exclude<RawSignalKind, 'transaction.step'>; transactionPhase?: never }
+  );
 };
 
 export type StarterRequest = {
@@ -141,7 +155,11 @@ export type StarterRequest = {
   journey: JourneyState;
 };
 
-export type Starter = { starterId: Id; role: 'primary' | 'followup'; kind: 'helpful' | 'commercial'; text: string; templateId?: Id };
+type StarterBase = { starterId: Id; role: 'primary' | 'followup'; text: string; templateId?: Id };
+export type Starter = StarterBase & (
+  | { kind: 'helpful'; offerId?: Id }
+  | { kind: 'commercial'; offerId: Id }
+);
 
 export type StarterResult = {
   schemaVersion: SchemaVersion;

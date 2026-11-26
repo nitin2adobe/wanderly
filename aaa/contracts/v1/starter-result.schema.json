@@ -36,7 +36,7 @@
       ]
     },
     "starters": {
-      "description": "0 to 3 starters. A non-empty list must include exactly one primary, which must be helpful; at most one starter may be commercial (provisional cap). Never padded.",
+      "description": "0 to 3 starters. A non-empty list must include exactly one primary, which must be helpful; at most one starter may be commercial. Never padded.",
       "type": "array",
       "maxItems": 3,
       "items": { "$ref": "#/$defs/starter" },
@@ -135,8 +135,14 @@
         "templateId": {
           "description": "Profile starter template this was derived from, if any.",
           "$ref": "urn:aaa:contracts:v1:common#/$defs/id"
+        },
+        "offerId": {
+          "description": "The one offer this commercial starter promotes. It must also appear in result offerIds; approval and eligibility are runtime checks.",
+          "$ref": "urn:aaa:contracts:v1:common#/$defs/id"
         }
-      }
+      },
+      "if": { "required": ["kind"], "properties": { "kind": { "const": "commercial" } } },
+      "then": { "required": ["offerId"] }
     }
   }
 }
