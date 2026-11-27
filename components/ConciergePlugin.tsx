@@ -8,9 +8,11 @@ import { EVENT_UPDATED } from '@/lib/events';
 import { getAaaRuntime } from '@/lib/aaa-runtime';
 import { track } from '@/lib/tracking';
 import { wanderlyActivation } from '@/sites/wanderly/activation';
-import { getCanonicalJourney, getComparisonSelection, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
+import { getCanonicalJourney, getCurrentMoment, evaluateCurrentSuppression, getComparisonSelection, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
 import { visitorBriefIsFresh, visitorBriefStore } from '@/lib/aaa-visitor-brief';
-import { comparisonContext, validateComparisonStarter } from '@/sites/wanderly/comparison';
+import { COMPARISON_SNAPSHOT_REQUEST, comparisonRequest, type ComparisonSnapshot } from '@/lib/aaa-comparison';
+import { readAmbientPage } from '@/lib/ambient-context';
+import { comparisonContext, comparisonSummary, validateComparisonStarter } from '@/sites/wanderly/comparison';
 
 export default function ConciergePlugin({
   connector = adobeConnector, provider = wanderlyActivation, catalogVersion,
@@ -28,6 +30,37 @@ export default function ConciergePlugin({
   const attempted = useRef('');
   const exposed = useRef<PreparedNudge | undefined>(undefined);
   current.current = nudge;
+
+  useEffect(() => {
+    const capture = (event: Event) => {
+      if (!('detail' in event) || !event.detail || typeof event.detail !== 'object'
+        || !('respond' in event.detail) || typeof event.detail.respond !== 'function') return;
+      try {
+        if (window.parent === window || window.parent.location.origin !== window.location.origin
+          || window.parent.location.pathname !== '/demo/compare') return;
+        const availability = getAaaRuntime().get();
+        const journey = getCanonicalJourney();
+        const moment = getCurrentMoment();
+        const suppression = evaluateCurrentSuppression();
+        const request = comparisonRequest({
+          journey, profile: availability.enabled ? availability.active.profile : undefined, moment, suppression,
+        }, crypto.randomUUID(), new Date().toISOString());
+        const selection = getComparisonSelection() ?? [];
+        const summary = availability.enabled && journey && journey.page.pageType === 'comparison'
+          ? comparisonSummary(comparisonContext(journey, availability.active.profile, selection)) : undefined;
+        const snapshot: ComparisonSnapshot = {
+          ...(request ? { request } : {}),
+          page: readAmbientPage(document, window.location, summary),
+          selection,
+        };
+        event.detail.respond(snapshot);
+      } catch (error) {
+        console.error('[aaa-comparison] snapshot.failed', error);
+      }
+    };
+    window.addEventListener(COMPARISON_SNAPSHOT_REQUEST, capture);
+    return () => window.removeEventListener(COMPARISON_SNAPSHOT_REQUEST, capture);
+  }, []);
 
   const clear = () => {
     const focused = balloon.current?.contains(document.activeElement);

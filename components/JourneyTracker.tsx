@@ -13,7 +13,7 @@ export default function JourneyTracker(){
   useEffect(()=>aaa.enabled ? startCanonicalInputs() : undefined,[aaa.enabled]);
   useEffect(()=>{
     if(!aaa.enabled){last.current='';return;}
-    if(!pathname || pathname==='/agent') return;
+    if(!pathname || pathname==='/agent' || pathname==='/demo/compare') return;
     const destination=conciergePageDestination(pathname,destinationParam ? `?destination=${encodeURIComponent(destinationParam)}` : '');
     const page=destinationParam && destination ? `${pathname}?destination=${destination.slug}` : pathname;
     if(last.current===page) return;

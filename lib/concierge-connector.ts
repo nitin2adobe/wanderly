@@ -18,7 +18,7 @@ export const CONCIERGE_OPEN_EVENT = 'wanderly:concierge-open';
 export const CONCIERGE_CLOSE_EVENT = 'wanderly:concierge-close';
 
 const HIDDEN_ROUTES = ['/agent', '/booking', '/concierge-knowledge'];
-const HIDDEN_EXACT = ['/demo', '/demo/live'];
+const HIDDEN_EXACT = ['/demo', '/demo/live', '/demo/compare'];
 export const isHiddenConciergeRoute = (pathname: string | null) =>
   !!pathname && (HIDDEN_EXACT.includes(pathname) || HIDDEN_ROUTES.some(route => pathname === route || pathname.startsWith(`${route}/`)));
 
