@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
-import { retailAbstainResult, retailFallbackResult, retailJourney, retailProfile, retailRequest, retailSignals } from './examples/retail.ts';
-import { travelJourney, travelProfile, travelRequest, travelResult, travelSignals } from './examples/travel.ts';
+import { retailAbstainResult, retailFallbackResult, retailJourney, retailProfile, retailRequest, retailSignals } from '../../sites/retail/contract-examples.ts';
+import { travelJourney, travelProfile, travelRequest, travelResult, travelSignals } from '../../sites/wanderly/contract-examples.ts';
 import { derivedStateKinds, provenances, rawSignalKinds, starterOutcomes, transactionPhases, type SiteProfile, type Starter } from './types.ts';
 import { allSchemas, contractSchemas, validateContract, type ContractName } from './validate.ts';
 

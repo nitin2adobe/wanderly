@@ -8,17 +8,18 @@ const LAST_ACTIVE_KEY = `${SESSION_STORAGE_KEY}.lastActive`;
 /**
  * Per-tab browser journey store. Everything lives in the tab's own storage
  * (sessionStorage in the browser). It stores only minimized events and forgets
- * the session after 30 minutes of inactivity. Before consent, the expiry sweep
+ * the session after the configured inactivity period (at most 30 minutes). Before consent, the expiry sweep
  * may inspect session timestamps and delete expired data, but does not read or
  * rewrite journey events. `legacy` is the shared store used by earlier builds.
  */
-export function createJourneyStore({ session, legacy, isGranted, now = () => Date.now(), notify = () => {}, makeId }: {
+export function createJourneyStore({ session, legacy, isGranted, now = () => Date.now(), notify = () => {}, makeId, inactivityMs = () => SESSION_INACTIVITY_MS }: {
   session: KeyValueStore;
   legacy?: KeyValueStore;
   isGranted: () => boolean;
   now?: () => number;
   notify?: (event?: WanderlyEvent) => void;
   makeId: (prefix: string) => string;
+  inactivityMs?: () => number;
 }) {
   const removeLegacy = () => { try { legacy?.removeItem(EVENT_STORAGE_KEY); } catch {} };
   removeLegacy();
@@ -45,7 +46,7 @@ export function createJourneyStore({ session, legacy, isGranted, now = () => Dat
   };
   const idle = () => {
     const lastActive = Number(session.getItem(LAST_ACTIVE_KEY));
-    return Number.isFinite(lastActive) && lastActive > 0 && now() - lastActive >= SESSION_INACTIVITY_MS;
+    return Number.isFinite(lastActive) && lastActive > 0 && now() - lastActive >= inactivityMs();
   };
 
   /**
@@ -65,7 +66,7 @@ export function createJourneyStore({ session, legacy, isGranted, now = () => Dat
     }
     if (sid && idle()) { forgetSession(); changed = true; }
     const all = readAll();
-    const kept = dropExpiredSessions(all, now()).filter(event => !changed || event.sessionId !== sid);
+    const kept = dropExpiredSessions(all, now(), inactivityMs()).filter(event => !changed || event.sessionId !== sid);
     if (kept.length !== all.length) changed = true;
     writeAll(kept);
     if (changed) notify();
@@ -74,7 +75,7 @@ export function createJourneyStore({ session, legacy, isGranted, now = () => Dat
 
   function getEvents(): WanderlyEvent[] {
     if (!isGranted()) return [];
-    const kept = dropExpiredSessions(readAll(), now());
+    const kept = dropExpiredSessions(readAll(), now(), inactivityMs());
     writeAll(kept);
     return kept;
   }

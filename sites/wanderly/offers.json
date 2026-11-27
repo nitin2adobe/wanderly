@@ -1,0 +1,10 @@
+[
+  {
+    "source": "local-demo", "tenantId": "tenant-wanderly-demo", "offerId": "offer-island-rhythm-demo",
+    "entityIds": ["island-rhythm"], "locales": ["en-US"], "pageTypes": ["package-list", "package-detail", "comparison"],
+    "validUntil": "2027-01-01T00:00:00Z", "approved": true, "evidenceIds": ["ev-island-rhythm"],
+    "name": "Fictional Island Rhythm sample package", "samplePrice": "$2,190",
+    "description": "7 nights, Balanced pace, Ubud retreat + coastal pool villa. International flights and travel insurance excluded. Fictional demo content only; no discount, real availability or bookable offer.",
+    "sourcePath": "lib/data.ts"
+  }
+]

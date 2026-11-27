@@ -151,6 +151,20 @@ test('an otherwise empty session also expires after 30 minutes of inactivity', (
   assert.notEqual(store.getSessionId(), first);
 });
 
+test('configured inactivity expiry is enforced on events and session reads', () => {
+  let clock = Date.parse('2026-11-26T10:00:00Z');
+  let inactivity = 30 * 60_000;
+  let n = 0;
+  const store = createJourneyStore({ session: memoryStore(), isGranted: () => true, now: () => clock,
+    inactivityMs: () => inactivity, makeId: prefix => `${prefix}${++n}` });
+  const first = store.track('PAGE_VIEW', '/')!;
+  clock += 2 * 60_000;
+  assert.equal(store.getSessionId(), first.sessionId);
+  inactivity = 60_000;
+  assert.deepEqual(store.getEvents(), []);
+  assert.notEqual(store.getSessionId(), first.sessionId);
+});
+
 test('ambient page context is not attached unless consent is granted', () => {
   let granted = false;
   const hook = createAmbientContextHook(() => ({ url: 'https://demo.test/booking?email=x', path: '/booking', title: 'A' }), undefined, () => new Date(0), () => granted);

@@ -19,12 +19,12 @@ export type ConciergeBootstrapOptions = {
 export type ConciergeOpenResult = { status: 'opened' | 'submitted' | 'existing' | 'cancelled' };
 
 function welcomeQuestions(question?: string, examples: readonly string[] = []): string[] {
-  return [...new Set([question, ...examples].filter((value): value is string => !!value?.trim()).map(value => value.trim()))];
+  return [...new Set([question, ...examples].filter((value): value is string => !!value?.trim()).map(value => value.trim()))].slice(0, 3);
 }
 
-export function withConciergeSuggestion(configuration: object | undefined, question?: string, examples?: readonly string[]): object {
-  const questions = welcomeQuestions(question, examples);
-  if (!questions.length) return configuration ?? {};
+export function withConciergeSuggestion(configuration: object | undefined, question?: string, examples?: readonly string[], exactExamples = false): object {
+  const questions = exactExamples && examples ? [...examples] : welcomeQuestions(question, examples);
+  if (!questions.length && examples === undefined) return configuration ?? {};
   const arrays = configuration && 'arrays' in configuration && configuration.arrays && typeof configuration.arrays === 'object'
     ? configuration.arrays : {};
   return { ...configuration, arrays: { ...arrays, 'welcome.examples': questions.map(text => ({ text })) } };
@@ -36,7 +36,7 @@ export function createConciergeClient({
 }: {
   ready: Promise<void>;
   mount: Pick<HTMLElement, 'setAttribute' | 'removeAttribute'>;
-  bootstrap: (onEvent: (event: ConciergeClientEvent) => void, question?: string, examples?: readonly string[]) => void | Promise<void>;
+  bootstrap: (onEvent: (event: ConciergeClientEvent) => void, question?: string, examples?: readonly string[], exactExamples?: boolean) => void | Promise<void>;
   canOpen: (initialMessage: string | undefined, automatic: boolean) => boolean;
   onEvent?: (event: ConciergeClientEvent) => void;
   legacyAutoSubmit?: boolean;
@@ -53,9 +53,9 @@ export function createConciergeClient({
   let cancellationEpoch = 0;
 
   return {
-    open(initialMessage?: string, signal?: AbortSignal, allowAutoSubmit = true, examples?: readonly string[]): Promise<ConciergeOpenResult> {
-      const questions = welcomeQuestions(undefined, examples);
-      const examplesKey = JSON.stringify(welcomeQuestions(initialMessage, questions));
+    open(initialMessage?: string, signal?: AbortSignal, allowAutoSubmit = true, examples?: readonly string[], stillEligible: () => boolean = () => true, exactExamples = false): Promise<ConciergeOpenResult> {
+      const questions = exactExamples && examples ? [...examples] : welcomeQuestions(undefined, examples);
+      const examplesKey = JSON.stringify(exactExamples ? questions : welcomeQuestions(initialMessage, questions));
       const epoch = cancellationEpoch;
       const request = queue.then(() => new Promise<ConciergeOpenResult>((resolve, reject) => {
         let settled = false;
@@ -78,7 +78,8 @@ export function createConciergeClient({
         const timeout = setTimeout(() => finish(undefined, new Error('Brand Concierge acknowledgement timed out. Reload or continue manually; do not automatically resend.')), timeoutMs);
         cancelActive = cancel;
         signal?.addEventListener('abort', cancel, { once: true });
-        if (disposed || epoch !== cancellationEpoch || signal?.aborted || !canOpen(initialMessage, allowAutoSubmit)) { cancel(); return; }
+        const permitted = () => !disposed && epoch === cancellationEpoch && !signal?.aborted && stillEligible() && canOpen(initialMessage, allowAutoSubmit);
+        if (!permitted()) { cancel(); return; }
 
         const receive = (event: ConciergeClientEvent) => {
           if (disposed) return;
@@ -87,7 +88,7 @@ export function createConciergeClient({
           try { onEvent?.(event); }
           catch (error) { console.error('Unable to record Brand Concierge lifecycle:', error); }
           if (settled) return;
-          if (epoch !== cancellationEpoch || signal?.aborted || !canOpen(initialMessage, allowAutoSubmit)) { cancel(); return; }
+          if (!permitted()) { cancel(); return; }
           if (event.eventType === 'error:occurred') {
             finish(undefined, new Error('Brand Concierge reported an SDK or service error.'));
           } else if (autoSubmit && event.eventType === 'query:submitted' && event.data?.query === initialMessage) {
@@ -103,15 +104,15 @@ export function createConciergeClient({
 
         ready.then(async () => {
           if (settled) return;
-          if (disposed || epoch !== cancellationEpoch || signal?.aborted || !canOpen(initialMessage, allowAutoSubmit)) { cancel(); return; }
-          if (initialized && (hasConversation || (!autoSubmit && initialMessage === configuredQuestion && examplesKey === configuredExamples))) { finish({ status: 'existing' }); return; }
+          if (!permitted()) { cancel(); return; }
+          if (hasConversation || (initialized && !autoSubmit && initialMessage === configuredQuestion && examplesKey === configuredExamples)) { finish({ status: 'existing' }); return; }
           if (autoSubmit && blockedMessage === initialMessage) {
             finish(undefined, new Error('The previous submission has an unknown outcome. Continue in the existing chat instead of resending.'));
             return;
           }
           bootstrapping = true;
           if (autoSubmit) mount.setAttribute('data-initial-message', initialMessage);
-          await bootstrap(receive, autoSubmit ? undefined : initialMessage, questions);
+          await bootstrap(receive, autoSubmit ? undefined : initialMessage, questions, exactExamples);
         }).catch(error => finish(undefined, error instanceof Error ? error : new Error('Brand Concierge bootstrap failed.')));
       }));
       queue = request.then(() => undefined, () => undefined);

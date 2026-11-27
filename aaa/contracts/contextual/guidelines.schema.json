@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:contextual:guidelines:1",
+  "title": "Reviewed contextual guidelines",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profileId", "profileVersion", "playbooks"],
+  "properties": {
+    "schemaVersion": { "const": "aaa-guidelines-1" },
+    "profileId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "profileVersion": { "$ref": "urn:aaa:contracts:v1:common#/$defs/version" },
+    "playbooks": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["playbookId", "locale", "intent", "tone", "allowedClaims", "avoidTerms", "exampleTemplateIds"],
+        "properties": {
+          "playbookId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+          "locale": { "$ref": "urn:aaa:contracts:v1:common#/$defs/locale" },
+          "intent": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "tone": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "allowedClaims": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["text", "evidenceIds"],
+              "properties": {
+                "text": { "type": "string", "minLength": 1, "maxLength": 160 },
+                "evidenceIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList", "minItems": 1, "maxItems": 16 }
+              }
+            }
+          },
+          "avoidTerms": {
+            "type": "array",
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+          },
+          "exampleTemplateIds": { "$ref": "urn:aaa:contracts:v1:common#/$defs/idList", "minItems": 1, "maxItems": 3 },
+          "approvedHeadline": { "type": "string", "minLength": 1, "maxLength": 120 }
+        }
+      }
+    }
+  }
+}

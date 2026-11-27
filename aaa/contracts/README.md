@@ -35,7 +35,7 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 - `seq` and `pageRevision` are monotonic per session and per page instance.
 - `locale` must be in the profile's `locales.supported`.
 - `complete` and `cancel` are reported transaction phases, not proof of an outcome. Consumers must confirm completion/cancellation before ending `inProgress` and must never classify cancellation as visitor success, even when a configured transaction success matcher omits its phase.
-- The generic exposure-budget schema validates shape/ranges, not demo policy. The demo loader/consumer must reject configuration weaker than D16 and disable AAA safely with a diagnostic. Omitted budgets or fields do not waive safeguards: at most two nudges per session, at least 600000 ms apart, and none after dismissal. The schema validator does not do this; the Site Profile loader in [`../profile/loader.ts`](../profile/loader.ts) (AAA-12) does. It does not enforce runtime nudge counting, intervals or dismissal (AAA-16).
+- The generic exposure-budget schema validates shape/ranges, not demo policy. The Site Profile loader in [`../profile/loader.ts`](../profile/loader.ts) rejects profile budgets weaker than D16. Separately, activated per-site Authoring nudge settings determine the runtime budget and dismissal/chat behavior; absent settings use the existing D16 defaults. Consent, transaction and focused-form safeguards remain mandatory.
 - `StarterResult` validation additionally checks that each starter's `offerId` appears in result `offerIds`. Offer approval, eligibility, provenance and freshness still require consumer checks.
 
 ## Decisions
@@ -46,7 +46,7 @@ Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types
 
 **User-approved (D6 starter caps, demo):** StarterResult allows at most 3 starters in total. Whenever starters are shown, there is exactly one primary, and it is helpful. At most one starter may be promotional (`commercial`). All three caps are confirmed and enforced by the schema.
 
-**User-approved (D16, demo):** at most two nudges per session, at least ten minutes apart, none after dismissal; `inProgress` ends only on confirmed completion or cancellation, not inactivity or page exit. These are consumer/loader obligations, not demo-specific numeric constraints in the generic schema.
+**D16 defaults (demo):** at most two nudges per session, at least ten minutes apart, none after dismissal. Activated Authoring settings can change those runtime controls. `inProgress` still ends only on confirmed completion or cancellation, not inactivity or page exit.
 
 **Other provisional contract choices:** `transaction.step` uses shared phases `start`, `step`, `complete` and `cancel`. A commercial playbook must list `offerIds`. A fallback result must contain template starters and a reason code. An abstain result must contain no starters or offers and must have a reason code. These draft choices do not resolve remaining consumer review or limit decisions.
 

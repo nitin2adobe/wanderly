@@ -24,8 +24,8 @@ export function useAaaAvailability(): AaaAvailability {
 
 export const AAA_DISCLOSURE = [
   'With your permission, Wanderly records which pages, destinations and packages you view, and which assistance you accept or dismiss, to suggest relevant help. It does not record what you type, your searches, form entries or account details.',
-  'This activity is kept in this browser tab and expires after 30 minutes of inactivity. Duplicating or restoring a tab may copy its data. It is removed when the site next checks it while the tab is open, when you decline, or when your browser discards the tab’s storage after the tab is closed.',
-  'When AI suggestions are switched on, a summary of this activity is sent to an AI model to choose a suggestion. When you chat, Brand Concierge may also receive the page address and approved catalog details. Their retention follows Adobe’s and the model provider’s own policies.',
+  'This activity is kept in this browser tab and expires after at most 30 minutes of inactivity. Duplicating or restoring a tab may copy its data. It is removed when the site next checks it while the tab is open, when you decline, or when your browser discards the tab’s storage after the tab is closed.',
+  'When AI suggestions are switched on, a summary of this activity is sent to an AI model to choose a suggestion. When you chat, Brand Concierge may also receive a brief summary of your browsing intent, the page address and approved catalog details. Their retention follows Adobe’s and the model provider’s own policies.',
 ] as const;
 
 /**

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { retailProfile } from '../contracts/examples/retail.ts';
-import { travelProfile } from '../contracts/examples/travel.ts';
+import { retailProfile } from '../../sites/retail/contract-examples.ts';
+import { travelProfile } from '../../sites/wanderly/contract-examples.ts';
 import type { SiteProfile } from '../contracts/types.ts';
 import { createProfileRegistry, DEMO_EXPOSURE_POLICY, type ProfileResult } from './loader.ts';
 

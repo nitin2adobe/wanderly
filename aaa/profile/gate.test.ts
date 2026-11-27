@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDemoConsentAuthority } from '../../lib/aaa-consent.ts';
-import { travelProfile } from '../contracts/examples/travel.ts';
+import { travelProfile } from '../../sites/wanderly/contract-examples.ts';
 import { aaaAvailability } from './gate.ts';
 import { createProfileRegistry, DEMO_EXPOSURE_POLICY } from './loader.ts';
 

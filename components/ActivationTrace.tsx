@@ -11,6 +11,7 @@ import type { WanderlyEvent } from '@/lib/events';
 import SignalTimeline from './SignalTimeline';
 import { usePolicyOptions } from './use-policy-options';
 import { buildJourneyContext } from '@/lib/journey-context';
+import AaaStarterTrace from './AaaStarterTrace';
 
 /** Live view of decision -> policy -> invitation -> outcome for one session's events. */
 export default function ActivationTrace({ events, showHandoff = true }: { events: WanderlyEvent[]; showHandoff?: boolean }) {
@@ -40,12 +41,14 @@ export default function ActivationTrace({ events, showHandoff = true }: { events
 
   return (
     <div className="panel">
+      <AaaStarterTrace sessionId={events.at(-1)?.sessionId ?? ''} />
       <div className="traceHead">
-        <div className="eyebrow">Concierge activation trace</div>
+        <div className="eyebrow">Legacy decision comparison</div>
         <div className="modeToggle" role="group" aria-label="Activation source">
           <button className={mode === 'rules' ? 'active' : ''} onClick={() => setActivationMode('rules')}>Rules</button>
           <button className={mode === 'ai' ? 'active' : ''} onClick={() => setActivationMode('ai')}>AI-assisted</button>
         </div>
+        <p className="muted">This rules/AI comparison is a legacy preview, not the AAA activation gate. AAA uses the canonical Site Profile, journey and suppression policy; its delivery trace is above.</p>
       </div>
       <div className="traceSteps">
         <div><span>1 · Active decision</span><strong>{decision ? `${decision.decision}${decision.assistanceType !== 'NONE' ? ` · ${decision.assistanceType.replaceAll('_', ' ')}` : ''}` : 'Awaiting active evaluation'}</strong><small>{proposal ? `Used by plugin · ${proposal.source}` : mode === 'ai' ? 'The rules baseline does not control AI-assisted activation.' : 'Rules preview; awaiting plugin evaluation.'}</small></div>

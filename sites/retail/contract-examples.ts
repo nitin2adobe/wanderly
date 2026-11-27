@@ -1,4 +1,4 @@
-import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from '../types.ts';
+import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from '../../aaa/contracts/types.ts';
 
 // Non-travel fixture (retail, Volt Electronics). Illustrative demo data only; not the AAA-15 profile.
 

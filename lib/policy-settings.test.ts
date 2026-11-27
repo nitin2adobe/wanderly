@@ -15,16 +15,16 @@ test('garbage or missing settings fall back to the defaults', () => {
 test('out-of-range values are clamped so the gate cannot be disabled', () => {
   const clamped = sanitizePolicyOptions({ minConfidence: 0, cooldownMs: -5, maxInvitationsPerSession: 99 });
   assert.equal(clamped.minConfidence, 0.5);
-  assert.equal(clamped.cooldownMs, 0);
-  assert.equal(clamped.maxInvitationsPerSession, 5);
+  assert.equal(clamped.cooldownMs, 600_000);
+  assert.equal(clamped.maxInvitationsPerSession, 2);
   const high = sanitizePolicyOptions({ minConfidence: 5, cooldownMs: 9_999_999, maxInvitationsPerSession: 0 });
   assert.equal(high.minConfidence, 0.99);
-  assert.equal(high.cooldownMs, 600_000);
-  assert.equal(high.maxInvitationsPerSession, 1);
+  assert.equal(high.cooldownMs, 3_600_000);
+  assert.equal(high.maxInvitationsPerSession, 0);
 });
 
 test('valid values are kept and rounded sensibly', () => {
-  assert.deepEqual(sanitizePolicyOptions({ minConfidence: 0.873, cooldownMs: 30_400, maxInvitationsPerSession: 3.4 }), { minConfidence: 0.87, cooldownMs: 30_000, maxInvitationsPerSession: 3 });
+  assert.deepEqual(sanitizePolicyOptions({ minConfidence: 0.873, cooldownMs: 630_400, maxInvitationsPerSession: 1.4 }), { minConfidence: 0.87, cooldownMs: 630_000, maxInvitationsPerSession: 1 });
 });
 
 test('evaluatePolicy honours the sanitized overrides', () => {

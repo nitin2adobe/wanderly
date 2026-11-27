@@ -14,6 +14,7 @@ export default function LiveDemoPage() {
   const [scenarioId, setScenarioId] = useState<string>(demoScenarios[0].id);
   const [brand, setBrand] = useState<'wanderly' | 'electronics'>('wanderly');
   const [runKey, setRunKey] = useState(0);
+  const [manual, setManual] = useState(false);
   const [events, setEvents] = useState<WanderlyEvent[]>([]);
 
   useEffect(() => {
@@ -31,9 +32,9 @@ export default function LiveDemoPage() {
   }, []);
 
   const scenario = demoScenarios.find(s => s.id === scenarioId)!;
-  const start = (id: string) => { setScenarioId(id); setRunKey(k => k + 1); };
-  const switchBrand = (next: 'wanderly' | 'electronics') => { setBrand(next); setRunKey(k => k + 1); };
-  const siteSrc = `${brand === 'wanderly' ? '/demo' : '/demo/electronics'}?run=${scenarioId}`;
+  const start = (id: string) => { setManual(false); setScenarioId(id); setRunKey(k => k + 1); };
+  const switchBrand = (next: 'wanderly' | 'electronics') => { setManual(false); setBrand(next); setRunKey(k => k + 1); };
+  const siteSrc = manual ? '/demo' : `${brand === 'wanderly' ? '/demo' : '/demo/electronics'}?run=${scenarioId}`;
 
   return (
     <main className="shell"><section className="section topspace">
@@ -50,11 +51,12 @@ export default function LiveDemoPage() {
       </div>
       <div className="scenarioTabs" role="tablist" aria-label="Scenario">
         {demoScenarios.map(s => (
-          <button key={s.id} role="tab" aria-selected={s.id === scenarioId} className={s.id === scenarioId ? 'active' : ''} onClick={() => start(s.id)}>{s.title}</button>
+          <button key={s.id} role="tab" aria-selected={!manual && s.id === scenarioId} className={!manual && s.id === scenarioId ? 'active' : ''} onClick={() => start(s.id)}>{s.title}</button>
         ))}
-        <button className="replay" onClick={() => start(scenarioId)}>↻ Replay</button>
+        {brand === 'wanderly' && <button role="tab" aria-selected={manual} className={manual ? 'active' : ''} onClick={() => { setManual(true); setRunKey(k => k + 1); }}>Manual journey</button>}
+        {!manual && <button className="replay" onClick={() => start(scenarioId)}>↻ Replay</button>}
       </div>
-      <p className="muted"><strong>Expect:</strong> {brand === 'electronics' ? scenario.electronics.expectation : scenario.expectation}{brand === 'electronics' && ' (Fixture storefront: same engine, a second brand through an adapter.)'}</p>
+      <p className="muted"><strong>Expect:</strong> {manual ? 'In the customer site, select Reset demo, then browse normally to see the AAA trace for your own journey.' : brand === 'electronics' ? scenario.electronics.expectation : scenario.expectation}{brand === 'electronics' && ' (Fixture storefront: same engine, a second brand through an adapter.)'}</p>
       <div className="liveSplit">
         <div className="liveSite"><iframe key={`${brand}-${runKey}`} title="Customer site" src={siteSrc} /></div>
         <div className="liveTrace"><ActivationTrace events={events} showHandoff={false} /><RulesVsAI events={events} /><PolicyControls /></div>

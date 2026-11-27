@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { travelProfile } from '../aaa/contracts/examples/travel.ts';
+import { travelProfile } from '../sites/wanderly/contract-examples.ts';
 import type { ConsentAuthority, ConsentState } from './aaa-consent.ts';
 import { createAaaRuntime, gateJourneyStore } from './aaa-runtime.ts';
 import { createJourneyStore } from './journey-store.ts';

@@ -4,7 +4,9 @@ import journeyState from './v1/journey-state.schema.json' with { type: 'json' };
 import siteProfile from './v1/site-profile.schema.json' with { type: 'json' };
 import starterRequest from './v1/starter-request.schema.json' with { type: 'json' };
 import starterResult from './v1/starter-result.schema.json' with { type: 'json' };
+import contextualStarterResult from './contextual/starter-result.schema.json' with { type: 'json' };
 import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from './types.ts';
+import type { ContextualStarterResult } from './contextual/types.ts';
 
 // Dependency-free validator for the JSON Schema 2020-12 subset used by the AAA v1 contracts.
 // Unsupported keywords throw, so a schema can never be silently under-validated.
@@ -20,6 +22,7 @@ export type ContractTypes = {
   SiteProfile: SiteProfile;
   StarterRequest: StarterRequest;
   StarterResult: StarterResult;
+  ContextualStarterResult: ContextualStarterResult;
 };
 export type ContractName = keyof ContractTypes;
 
@@ -29,6 +32,7 @@ export const contractSchemas = {
   SiteProfile: siteProfile,
   StarterRequest: starterRequest,
   StarterResult: starterResult,
+  ContextualStarterResult: contextualStarterResult,
 } as const satisfies Record<ContractName, { $id: string }>;
 
 export const allSchemas: readonly { $id: string }[] = [common, ...Object.values(contractSchemas)];

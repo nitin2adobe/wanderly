@@ -1,7 +1,7 @@
 'use client';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-import { getEvents, getSessionId, startJourneyExpirySweep, track } from '@/lib/tracking';
+import { getEvents, getSessionId, startJourneyExpirySweep, startCanonicalInputs, track } from '@/lib/tracking';
 import { pageSignals } from '@/lib/page-signals';
 import { conciergePageDestination } from '@/lib/concierge-context';
 import { useAaaAvailability } from '@/components/AaaConsent';
@@ -10,6 +10,7 @@ export default function JourneyTracker(){
   const destinationParam=useSearchParams().get('destination');
   const aaa=useAaaAvailability();
   useEffect(()=>startJourneyExpirySweep(),[]);
+  useEffect(()=>aaa.enabled ? startCanonicalInputs() : undefined,[aaa.enabled]);
   useEffect(()=>{
     if(!aaa.enabled){last.current='';return;}
     if(!pathname || pathname==='/agent') return;

@@ -43,7 +43,7 @@ This clears the local UI only: context already sent to Adobe or a model provider
 
 Until a reviewed Wanderly profile exists (AAA-14), the demo publishes the illustrative contract fixture `aaa/contracts/examples/travel.ts`, which is not a reviewed profile. The app does not yet expose a way to publish another version or roll back at runtime.
 
-The app's existing invitation policy (`lib/assistance-policy.ts`, `lib/policy-settings.ts`) is weaker than D16. It defaults to a 120000 ms cooldown that applies only after a dismissal, allows up to 5 invitations, and stops only after repeated dismissals. It must adopt `active.exposure` in AAA-16.
+The loader's exposure policy validates the profile independently of the per-site Authoring nudge settings used by the current activation runtime.
 
 **Diagnostics** follow the v1 convention. Each one contains:
 - a stable code;
@@ -59,9 +59,9 @@ Diagnostics omit profile identifiers as well as schema messages, instance values
 - Omitted fields keep the policy values in `active.exposure`.
 - Dismissal suppression cannot be configured by a profile.
 - A registry snapshots its deployment policy at creation. Its limits must be non-negative safe integers.
+- Activated per-site Authoring settings independently set the runtime limits and dismissal/chat suppression; when unavailable, the runtime uses its last valid settings or the existing defaults.
 
 Not implemented here:
-- runtime nudge counting, interval and dismissal enforcement (AAA-16);
 - transaction confirmation for `inProgress`;
 - signal-mapping conflict detection (E2);
 - context packaging (E6);

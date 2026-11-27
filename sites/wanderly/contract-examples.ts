@@ -1,4 +1,4 @@
-import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from '../types.ts';
+import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from '../../aaa/contracts/types.ts';
 
 // Reference fixture 1 (travel). Illustrative demo data only; not a reviewed Wanderly profile (AAA-14).
 

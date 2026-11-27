@@ -1,4 +1,4 @@
-import { travelProfile } from '../aaa/contracts/examples/travel.ts';
+import reviewedProfile from '../sites/wanderly/profile.json' with { type: 'json' };
 import { aaaAvailability, type AaaAvailability } from '../aaa/profile/gate.ts';
 import { createProfileRegistry, DEMO_EXPOSURE_POLICY, type ProfileResult, type ProfileState } from '../aaa/profile/loader.ts';
 import { getConsentAuthority, type ConsentAuthority } from './aaa-consent.ts';
@@ -74,12 +74,11 @@ let runtime: AaaRuntime | undefined;
 let serverRuntime: AaaRuntime | undefined;
 
 /**
- * Browser runtime. Until the reviewed Wanderly profile exists (AAA-14), the demo boots the
- * illustrative contract fixture, which is not a reviewed profile.
+ * Browser runtime uses the versioned reference deployment profile, not a contract example.
  */
 export function getAaaRuntime(): AaaRuntime {
   if (typeof window === 'undefined') return serverRuntime ??= createAaaRuntime({ consent: () => ({ kind: 'demo-banner', get: () => 'pending', subscribe: () => () => {} }) });
-  runtime ??= createAaaRuntime({ consent: getConsentAuthority, profile: travelProfile });
+  runtime ??= createAaaRuntime({ consent: getConsentAuthority, profile: reviewedProfile });
   return runtime;
 }
 

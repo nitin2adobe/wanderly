@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:contextual:starter-result:1",
+  "title": "Contextual StarterResult envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "result", "starterProvenance"],
+  "properties": {
+    "schemaVersion": { "const": "aaa-contextual-starters-1" },
+    "result": { "$ref": "urn:aaa:contracts:v1:starter-result" },
+    "starterProvenance": {
+      "description": "One entry per starter in result, in the same order.",
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["starterId", "source"],
+        "properties": {
+          "starterId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+          "source": { "enum": ["generated", "approved"] }
+        }
+      }
+    },
+    "headline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "source"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "source": { "enum": ["generated", "approved"] }
+      }
+    },
+    "intentSummary": { "type": "string", "minLength": 1, "maxLength": 200 }
+  }
+}
