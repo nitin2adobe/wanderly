@@ -17,6 +17,9 @@ A fictional premium travel marketplace for the Adaptive Assistance Agent POC.
 - `/travel-info`
 - `/booking`
 - `/agent` This tab's journey and client activation inspector
+- `/agent/legacy` Legacy comparison and timeline inspector
+- `/demo/live` Customer journey alongside the agent's visitor-safe explanation
+- `/demo/compare` Three-lane presenter comparison
 
 ## Run locally
 Requires Node 22.6+.
@@ -37,7 +40,7 @@ The operator console and marketer authoring belong to the separate
 not this storefront. Wanderly has no operator proxy or operator credentials.
 Its starter proxy retains `X-AAA-Trace-Id` for correlation, and `/agent` shows
 only this tab's journey and reason-code-only client activation record. The
-legacy AI comparison remains opt-in.
+legacy AI comparison is at `/agent/legacy`.
 
 The browser and Next starter proxy bundle `profile.json`. Updating a service
 bundle alone does not update the storefront's profile or fallback templates;
@@ -195,12 +198,14 @@ transaction and focused-form safeguards remain mandatory.
 
 Set server-only `AAA_STARTER_SERVICE_URL` to the Python service's full
 `POST /aaa/starters` URL when it is running. The site requests the opt-in
-`/api/aaa/contextual-starters` proxy, which validates the contextual envelope and
-its frozen v1 result. If the contextual endpoint is unavailable or invalid, it
+`/api/aaa/contextual-starters` proxy, which validates v1 or v2 contextual envelopes
+and their frozen v1 result. If the contextual endpoint is unavailable or invalid, it
 falls back to `/aaa/starters` and then eligible local templates. A validated
 headline is used for the nudge, and returned starter text is shown unchanged.
-An optional intent summary is kept only in memory for the fresh, consented
-activation and added to journey XDM only when it fits the profile and D15 limits.
+An optional validated visitor brief is kept in memory, scoped to the current
+session and profile, and added to journey XDM only while chat is open and it fits
+the field and aggregate limits. This is request-side packaging, not proof that
+Concierge receives or uses it. The spike flag and preset controls are deferred.
 The proxy
 uses the configured `AAA_STARTER_ORIGIN` (default `http://localhost:3000`), not a
 caller-supplied tenant/origin. For the separate service's 15-second demo trial,
@@ -279,8 +284,15 @@ tool inputs/outputs or generated questions. Traces are held in memory in this
 tab and lost on a full reload. The proxy forwards `X-AAA-Trace-Id` and reads the
 separately versioned `/aaa/traces/<id>` diagnostic events using the same trusted
 origin; trace failures do not replace an otherwise valid starter result.
-The older rules/AI comparison and per-signal
-timeline are labelled as legacy previews; they do not control AAA activation.
+The older rules/AI comparison and per-signal timeline are at `/agent/legacy`;
+they do not control AAA activation.
+
+The `/demo/live` agent view displays visitor-scoped explanation data when
+available; it is not a model transcript or evidence that Concierge used the
+brief. `/demo/compare` compares Concierge alone, local approved templates, and
+AAA on the same eligible journey. Its ambient block is a preview copied from
+the tenant template, not proof of delivery. Both pages label the grounding
+scoreboard as scripted; live review and latency remain pending.
 
 The demo now has five scenarios: **Right moment** (Bali/Maldives comparison),
 **Choose a package** (Island Rhythm/Bali Slow Living), **Practical travel
@@ -288,7 +300,7 @@ questions** (Japan entry guidance), **Right restraint** (no proactive chat durin
 booking progress), and **Respectful adaptation** (no repeat after dismissal with
 the default nudge settings).
 Comparison scenarios land on `/compare`; the others land on the relevant
-customer page in Rules mode. Starting another
+customer page. Starting another
 scenario closes the previous chat window and resets Wanderly's session, not
 Adobe conversation history. Once a question has been submitted, use the updated
 Wanderly question banner/copy button rather than expecting new welcome pills.
@@ -373,7 +385,7 @@ Step 2 adds anonymous browser-session instrumentation and an internal journey in
 - A session ID is stored in `sessionStorage` (new browser tab/session = new anonymous session).
 - The POC's journey events are stored per tab in `sessionStorage`. Adobe's Web SDK and chat handle their own data separately.
 - Route changes emit `PAGE_VIEW` plus semantic events such as `DESTINATION_VIEW`, `COMPARE_VIEW`, `TRAVEL_INFO_VIEW`, and `BOOKING_START`.
-- Open `/agent` in the same tab (journey data is per tab) or use `/demo/live` to inspect the session event timeline.
+- Open `/agent/legacy` in the same tab to inspect the session event timeline.
 - Click **New session** in `/agent` to clear the current session and start a fresh test journey.
 
 ### Step 2 acceptance journey
@@ -388,4 +400,4 @@ AI `SILENT / WAIT / ASSIST` reasoning is deliberately deferred to Step 3.
 
 ## Step 2 complete - Journey Context Builder
 
-The `/agent` inspector now shows both raw events and deterministic interpreted context: destination switching, comparison activity, pricing exploration, information seeking, booking progression, overall journey progression, and potential friction. This normalized context is the input contract for Step 3 AI decisioning.
+The `/agent/legacy` inspector shows raw events and deterministic interpreted context: destination switching, comparison activity, pricing exploration, information seeking, booking progression, overall journey progression, and potential friction. This normalized context is the input contract for Step 3 AI decisioning.
