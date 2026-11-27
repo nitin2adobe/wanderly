@@ -44,7 +44,7 @@ export default function BrandConcierge() {
     },
     getCanonicalJourney,
     getCurrentPage,
-    getVisitorBrief: () => isOpenRef.current ? visitorBriefStore.get() : undefined,
+    getVisitorBrief: () => visitorBriefStore.get(isOpenRef.current),
   });
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const launcherRef = useRef<HTMLButtonElement>(null);

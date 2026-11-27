@@ -8,7 +8,8 @@ import { EVENT_UPDATED } from '@/lib/events';
 import { getAaaRuntime } from '@/lib/aaa-runtime';
 import { track } from '@/lib/tracking';
 import { wanderlyActivation } from '@/sites/wanderly/activation';
-import { getComparisonSelection, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
+import { getCanonicalJourney, getComparisonSelection, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
+import { visitorBriefIsFresh, visitorBriefStore } from '@/lib/aaa-visitor-brief';
 import { comparisonContext, validateComparisonStarter } from '@/sites/wanderly/comparison';
 
 export default function ConciergePlugin({
@@ -95,6 +96,17 @@ export default function ConciergePlugin({
         ));
         if (!result) return;
         const named = { ...prepared, response: { ...prepared.response, result } };
+        if (named.response.visitorBrief) {
+          const identity = named.request.journey;
+          visitorBriefStore.set(named.response.visitorBrief.text, () => {
+            const availability = getAaaRuntime().get();
+            const journey = getCanonicalJourney();
+            return availability.enabled && !!journey
+              && journey.profileId === availability.active.profile.profileId
+              && journey.profileVersion === availability.active.profile.profileVersion
+              && visitorBriefIsFresh(identity, named.response.result.expiresAt, journey);
+          });
+        }
         current.current = named;
         setNudge(named);
         setFailed(false);
@@ -149,7 +161,6 @@ export default function ConciergePlugin({
     try {
       const result = await connector.openStarters(prepared.response.result, {
         activationId, signal: abort.signal, automatic: false,
-        intentSummary: prepared.response.intentSummary,
         // Focus/chat suppression was checked at click. Once this visitor-requested opening begins,
         // its own chat/focus must not invalidate it; identity, eligibility and expiry still apply.
         stillEligible: () => controller.isFresh(prepared, true, true),

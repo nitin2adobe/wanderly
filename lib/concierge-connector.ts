@@ -2,7 +2,7 @@ import type { ConciergeHandoff } from './concierge-handoff.ts';
 import type { ConciergeOpenResult } from './brand-concierge-client.ts';
 import type { StarterResult } from '../aaa/contracts/types.ts';
 
-export type ConciergeOpenOptions = { initialMessage?: string; signal?: AbortSignal; activationId?: string; explanation?: string; automatic?: boolean; starterResult?: StarterResult; intentSummary?: string; stillEligible?: () => boolean };
+export type ConciergeOpenOptions = { initialMessage?: string; signal?: AbortSignal; activationId?: string; explanation?: string; automatic?: boolean; starterResult?: StarterResult; stillEligible?: () => boolean };
 export type ConciergeOpenRequest = ConciergeOpenOptions & {
   resolve: (result: ConciergeOpenResult) => void;
   reject: (error: Error) => void;
