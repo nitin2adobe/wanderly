@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AAA_TRACE_CHANGED, acceptFrameActivationTrace, getActivationTraces } from '@/lib/aaa-activation';
-import { explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
+import { consideredReasons, decisionDetails, explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
 import GroundingScoreboard from '@/components/GroundingScoreboard';
 
 type RecordValue = Record<string, unknown>;
@@ -53,6 +53,7 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
   const considered = list(data?.considered).map(object);
   const calls = list(data?.toolCalls).map(object);
   const selection = object(data?.selection);
+  const decision = decisionDetails(data ?? {});
   const wording = object(data?.wording);
   const starters = list(wording.starters).map(object);
   const validation = object(data?.validation);
@@ -75,7 +76,7 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
         <section><h3>What it considered</h3>
           {considered.length ? <ul>{considered.map((item, i) => <li key={i}>
             {friendlyExplainId(text(item.playbookId)) || 'Help option'}: {item.eligible ? 'eligible' : 'not eligible'}
-            {list(item.reasonCodes).map(code => explainReason(text(code))).filter(Boolean).map(reason => <span key={reason}> · {reason}</span>)}
+            {consideredReasons(item).map((reason, index) => <span key={`${reason}-${index}`}> · {reason}</span>)}
           </li>)}</ul> : <p>No help options recorded.</p>}
         </section>
         <section><h3>What it looked up</h3>
@@ -88,6 +89,8 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
             {text(selection.playbookId) && ` ${friendlyExplainId(text(selection.playbookId))}.`}
             {explainReason(text(data.reasonCode)) && ` ${explainReason(text(data.reasonCode))}.`}
           </p>
+          {decision.rulesChoice && <p>{decision.rulesChoice}</p>}
+          {decision.reasons.map(reason => <p key={reason}>{reason.charAt(0).toUpperCase() + reason.slice(1)}.</p>)}
         </section>
         <section><h3>What it wrote</h3>
           {text(object(wording.headline).text) && <p>{text(object(wording.headline).text)}</p>}

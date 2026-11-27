@@ -29,6 +29,37 @@ export function explainReason(code: string): string | undefined {
   return reasons[code];
 }
 
+export function consideredReasons(item: Record<string, unknown>): string[] {
+  const missingPairWording = item.eligible === true && item.hasApprovedWording === false;
+  const codes = Array.isArray(item.reasonCodes) ? item.reasonCodes : [];
+  const labels = codes.filter((code): code is string => typeof code === 'string')
+    .filter(code => !missingPairWording || code !== 'eligibility.matched')
+    .map(explainReason).filter((label): label is string => !!label);
+  return missingPairWording ? ['No approved wording for this pair', ...labels] : labels;
+}
+
 export const friendlyExplainId = (id: string) => id.replace(/[-_.]+/g, ' ').replace(/^./, c => c.toUpperCase());
 export const provenanceLabel = (source: string) => source === 'generated'
   ? 'Chosen by the agent · passed checks' : source === 'approved' ? 'Approved example' : 'Source not recorded';
+
+const rationaleLabels: Record<string, string> = {
+  'signal.price_focus': 'because the visitor checked prices',
+  'facet.explicit': 'because the visitor chose a preference',
+  'signal.back_and_forth': 'because the visitor revisited options',
+  'signal.info_seeking': 'because the visitor sought more information',
+};
+
+export function decisionDetails(explain: Record<string, unknown>) {
+  const baseline = explain.baselinePlaybookId;
+  const selection = explain.selection && typeof explain.selection === 'object' && !Array.isArray(explain.selection)
+    ? explain.selection as Record<string, unknown> : {};
+  const selected = selection.playbookId;
+  const rationale = explain.rationale;
+  const rulesChoice = typeof baseline === 'string' && baseline && typeof selected === 'string' && selected && baseline !== selected
+    ? `Rules would have chosen: ${friendlyExplainId(baseline)}`
+    : undefined;
+  const reasons = Array.isArray(rationale)
+    ? [...new Set(rationale.filter((code): code is string => typeof code === 'string').map(code => rationaleLabels[code]).filter((label): label is string => !!label))]
+    : [];
+  return { rulesChoice, reasons };
+}

@@ -12,6 +12,7 @@ import { staleStarterReason, type StarterResponse } from '@/lib/aaa-starters';
 import { validateContract } from '@/aaa/contracts/validate';
 import { getAaaRuntime } from '@/lib/aaa-runtime';
 import { comparisonContext, validateComparisonStarter } from '@/sites/wanderly/comparison';
+import { friendlyExplainId } from '@/lib/aaa-explain-labels';
 import guidelines from '@/sites/wanderly/guidelines.json';
 
 type Results = { agent: StarterResponse; templates: StarterResponse; snapshot: ComparisonSnapshot; elapsed: number };
@@ -120,6 +121,7 @@ export default function CompareDemoPage() {
     return <section className="comparisonLane">
       <h2>{title}</h2>
       {quiet ? <p>Stayed quiet.</p> : !results ? <p>Run a journey to see this lane.</p> : <>
+        {value && <><h3>Playbook</h3><p>{value.result.playbookId ? friendlyExplainId(value.result.playbookId) : 'No playbook selected.'}</p></>}
         <h3>Nudge</h3><p>{value ? primary ? `${headline ?? 'Optional help'} — ${primary.text}` : 'Stayed quiet.' : 'No nudge.'}</p>
         <h3>Starter questions</h3>
         <ul>{(value ? value.result.starters.map((item, index) => ({ text: item.text, source: value.starterProvenance?.[index]?.source ?? 'approved' })) : defaultConciergeWelcomeExamples().map(text => ({ text, source: '' }))).map((item, index) => <li key={index}>{item.text} {item.source && <small className="agentEyeBadge">{item.source === 'generated' ? 'Chosen by the agent · passed checks' : 'Approved example'}</small>}</li>)}</ul>
