@@ -122,48 +122,48 @@ test('trace accepts only bounded machine codes and never raw tool or page data',
     tools: ['profile.read'], reasonCodes: ['validator.passed'], alternatives: ['candidate.rejected'],
     validatorVerdicts: ['schema.valid'], fallbackReasons: ['service.unavailable'], suppressionReasons: ['transaction.active'],
   });
+});
 
-  test('demo deadline is configurable but bounded; invalid values retain the short default', () => {
-    assert.equal(starterServiceTimeoutMs('18000'), 18000);
-    assert.equal(starterServiceTimeoutMs(''), 4000);
-    assert.equal(starterServiceTimeoutMs('Infinity'), 4000);
-    assert.equal(starterServiceTimeoutMs('31000'), 4000);
-  });
+test('demo deadline is configurable but bounded; invalid values retain the short default', () => {
+  assert.equal(starterServiceTimeoutMs('18000'), 18000);
+  assert.equal(starterServiceTimeoutMs(''), 4000);
+  assert.equal(starterServiceTimeoutMs('Infinity'), 4000);
+  assert.equal(starterServiceTimeoutMs('31000'), 4000);
+});
 
-  test('reads separately versioned service trace using trusted origin, forwarding its ID without raw fields', async () => {
-    const traceId = 'a'.repeat(32);
-    const requests: { url: string; origin: string | null }[] = [];
-    const response = await generateStarters(travelRequest, travelProfile, {
-      endpoint: 'http://localhost/aaa/starters', origin: 'http://localhost:3000', now: () => now,
-      fetchImpl: async (url, init) => {
-        requests.push({ url: String(url), origin: new Headers(init?.headers).get('Origin') });
-        if (init?.method === 'POST') return Response.json(travelResult, { headers: { 'X-AAA-Trace-Id': traceId } });
-        return Response.json({ schemaVersion: 'aaa-trace-1', traceId, events: [
-          { code: 'playbook.considered', playbookId: 'private-id' },
-          { code: 'tool.catalog.found', arguments: 'private' },
-          { code: 'validator.passed', rawPage: 'private' },
-          { code: 'model.timeout' },
-        ] });
-      },
-    });
-    assert.equal(response.traceId, traceId);
-    assert.deepEqual(response.trace.tools, ['tool.catalog.found']);
-    assert.deepEqual(response.trace.alternatives, ['playbook.considered']);
-    assert.deepEqual(response.trace.validatorVerdicts, ['validator.passed']);
-    assert.deepEqual(response.trace.fallbackReasons, ['model.timeout']);
-    assert.equal(JSON.stringify(response.trace).includes('private'), false);
-    assert.equal(requests[1].url, `http://localhost/aaa/traces/${traceId}`);
-    assert.ok(requests.every(request => request.origin === 'http://localhost:3000'));
+test('reads separately versioned service trace using trusted origin, forwarding its ID without raw fields', async () => {
+  const traceId = 'a'.repeat(32);
+  const requests: { url: string; origin: string | null }[] = [];
+  const response = await generateStarters(travelRequest, travelProfile, {
+    endpoint: 'http://localhost/aaa/starters', origin: 'http://localhost:3000', now: () => now,
+    fetchImpl: async (url, init) => {
+      requests.push({ url: String(url), origin: new Headers(init?.headers).get('Origin') });
+      if (init?.method === 'POST') return Response.json(travelResult, { headers: { 'X-AAA-Trace-Id': traceId } });
+      return Response.json({ schemaVersion: 'aaa-trace-1', traceId, events: [
+        { code: 'playbook.considered', playbookId: 'private-id' },
+        { code: 'tool.catalog.found', arguments: 'private' },
+        { code: 'validator.passed', rawPage: 'private' },
+        { code: 'model.timeout' },
+      ] });
+    },
   });
+  assert.equal(response.traceId, traceId);
+  assert.deepEqual(response.trace.tools, ['tool.catalog.found']);
+  assert.deepEqual(response.trace.alternatives, ['playbook.considered']);
+  assert.deepEqual(response.trace.validatorVerdicts, ['validator.passed']);
+  assert.deepEqual(response.trace.fallbackReasons, ['model.timeout']);
+  assert.equal(JSON.stringify(response.trace).includes('private'), false);
+  assert.equal(requests[1].url, `http://localhost/aaa/traces/${traceId}`);
+  assert.ok(requests.every(request => request.origin === 'http://localhost:3000'));
+});
 
-  test('unavailable diagnostics do not replace a valid service result with a fallback', async () => {
-    const response = await generateStarters(travelRequest, travelProfile, {
-      endpoint: 'http://localhost/aaa/starters', now: () => now,
-      fetchImpl: async (_url, init) => init?.method === 'POST'
-        ? Response.json(travelResult, { headers: { 'X-AAA-Trace-Id': 'a'.repeat(32) } })
-        : new Response(null, { status: 404 }),
-    });
-    assert.deepEqual(response.result, travelResult);
-    assert.deepEqual(response.trace.reasonCodes, ['trace.unavailable']);
+test('unavailable diagnostics do not replace a valid service result with a fallback', async () => {
+  const response = await generateStarters(travelRequest, travelProfile, {
+    endpoint: 'http://localhost/aaa/starters', now: () => now,
+    fetchImpl: async (_url, init) => init?.method === 'POST'
+      ? Response.json(travelResult, { headers: { 'X-AAA-Trace-Id': 'a'.repeat(32) } })
+      : new Response(null, { status: 404 }),
   });
+  assert.deepEqual(response.result, travelResult);
+  assert.deepEqual(response.trace.reasonCodes, ['trace.unavailable']);
 });
