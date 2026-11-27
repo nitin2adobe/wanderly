@@ -197,26 +197,7 @@
       "locale": "en-US",
       "intent": "Help compare the elements that affect total trip cost",
       "tone": "Clear and neutral",
-      "allowedClaims": [
-        {
-          "text": "Fictional demo: Bali sample package prices vary with trip length and stay; confirm transfers and exclusions.",
-          "evidenceIds": [
-            "ev-cost-focus-bali"
-          ]
-        },
-        {
-          "text": "Fictional demo: Maldives sample package prices vary with villa and meals; confirm island transfers and exclusions.",
-          "evidenceIds": [
-            "ev-cost-focus-maldives"
-          ]
-        },
-        {
-          "text": "Fictional demo: Japan sample package prices vary with trip length and route; confirm rail and exclusions.",
-          "evidenceIds": [
-            "ev-cost-focus-japan"
-          ]
-        }
-      ],
+      "allowedClaims": [],
       "aspects": [
         {
           "id": "total-cost",
@@ -229,7 +210,11 @@
         }
       ],
       "avoidTerms": [
-        "guaranteed"
+        "guaranteed",
+        "cheapest",
+        "deal",
+        "discount",
+        "best price"
       ],
       "exampleTemplateIds": [
         "t-cost-focus",
@@ -243,26 +228,7 @@
       "locale": "en-US",
       "intent": "Help compare destinations against the visitor's trip pace",
       "tone": "Clear and neutral",
-      "allowedClaims": [
-        {
-          "text": "Fictional demo: Bali sample trips combine cultural outings with flexible time and a road transfer between bases.",
-          "evidenceIds": [
-            "ev-pace-fit-bali"
-          ]
-        },
-        {
-          "text": "Fictional demo: Maldives sample trips use one island base with unhurried days and an island transfer.",
-          "evidenceIds": [
-            "ev-pace-fit-maldives"
-          ]
-        },
-        {
-          "text": "Fictional demo: Japan sample trips include city walking, changing bases and an intercity train.",
-          "evidenceIds": [
-            "ev-pace-fit-japan"
-          ]
-        }
-      ],
+      "allowedClaims": [],
       "aspects": [
         {
           "id": "trip-pace",
