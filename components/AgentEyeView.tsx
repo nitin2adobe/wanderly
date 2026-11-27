@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AAA_TRACE_CHANGED, acceptFrameActivationTrace, getActivationTraces } from '@/lib/aaa-activation';
 import { explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
+import GroundingScoreboard from '@/components/GroundingScoreboard';
 
 type RecordValue = Record<string, unknown>;
 const object = (value: unknown): RecordValue => value && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : {};
@@ -61,6 +62,7 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
   return <section className="agentEye panel" aria-labelledby="agent-eye-title">
     <h2 id="agent-eye-title">The agent’s view</h2>
     <p className="muted">A visitor-safe record of this decision, not a model transcript.</p>
+    <GroundingScoreboard />
     <div aria-live="polite">
       {status && <p role="status">{status}</p>}
       {data && <>

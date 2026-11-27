@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "aaa-grounding-summary-1",
+  "date": "2026-11-27T15:18:05Z",
+  "mode": "scripted",
+  "live": false,
+  "sampleSize": 7,
+  "scope": "Fixed synthetic Bali/Maldives comparison; no live-model quality or latency claim.",
+  "surfaces": {
+    "starter": {
+      "proposals": 7,
+      "accepted": 3,
+      "rejected": 4
+    },
+    "headline": {
+      "proposals": 7,
+      "accepted": 5,
+      "rejected": 2
+    },
+    "brief": {
+      "proposals": 7,
+      "accepted": 5,
+      "rejected": 2
+    },
+    "why": {
+      "proposals": 7,
+      "accepted": 6,
+      "rejected": 1
+    }
+  },
+  "rejectedByCategory": {
+    "unknown_entity": 1,
+    "off_journey_entity": 1,
+    "free_text": 3,
+    "slot_mismatch": 2
+  },
+  "categoryCountBasis": "Adversarial scenarios rejected as expected, not per-surface proposals.",
+  "violationsReachingOutput": 0,
+  "starterFallbackRate": 0.5714285714285714,
+  "latencyMs": {
+    "p50": null,
+    "p95": null,
+    "status": "pending-live"
+  },
+  "liveReview": {
+    "status": "pending",
+    "minimumRequests": 30
+  },
+  "status": "PASS"
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAaaAvailability } from '@/components/AaaConsent';
+import GroundingScoreboard from '@/components/GroundingScoreboard';
 import { COMPARISON_SNAPSHOT_REQUEST, type ComparisonSnapshot } from '@/lib/aaa-comparison';
 import { defaultConciergeWelcomeExamples } from '@/lib/concierge-context';
 import { packageConciergeJourneyContext } from '@/lib/concierge-context-packager';
@@ -133,6 +134,7 @@ export default function CompareDemoPage() {
   return <main className="shell"><section className="section topspace">
     <h1 className="display">Compare the approaches.</h1>
     <p className="muted">Run a journey in the customer site, then compare the same moment without recording another nudge exposure.</p>
+    <GroundingScoreboard />
     <div className="liveSite"><iframe ref={frame} title="Customer journey" src="/demo" /></div>
     <div className="agentActions"><button className="btn" type="button" disabled={running} onClick={() => void run()}>{running ? 'Running comparison…' : 'Run comparison'}</button></div>
     {status && <p role="alert">{status}</p>}
