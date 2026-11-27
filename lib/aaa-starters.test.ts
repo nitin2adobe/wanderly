@@ -20,6 +20,7 @@ test('contextual generation validates provenance and falls back to the legacy en
   assert.equal(validateContextualStarters({ ...envelope, extra: true }), undefined);
   const invalidOptional = validateContextualStarters({ ...envelope, headline: { text: 'x'.repeat(121), source: 'generated' }, intentSummary: 'x'.repeat(201) });
   assert.ok(invalidOptional);
+  assert.equal(invalidOptional.schemaVersion, 'aaa-contextual-starters-1');
   assert.equal(invalidOptional.headline, undefined);
   assert.equal(invalidOptional.intentSummary, undefined);
   const urls: string[] = [];
@@ -36,6 +37,28 @@ test('contextual generation validates provenance and falls back to the legacy en
   urls.length = 0;
   assert.deepEqual((await run(true)).result, travelResult);
   assert.deepEqual(urls, ['http://localhost/aaa/contextual-starters', 'http://localhost/aaa/starters']);
+});
+
+test('v2 contextual responses preserve bounded brief and explanation while rejecting invalid shapes', async () => {
+  const envelope = {
+    schemaVersion: 'aaa-contextual-starters-2',
+    result: travelResult,
+    starterProvenance: travelResult.starters.map(starter => ({ starterId: starter.starterId, source: 'generated' })),
+    visitorBrief: { text: 'Comparing destinations.', slots: { stage: 'comparing', entityIds: [], priorities: [], openQuestions: [] }, source: 'rendered' },
+    why: { text: 'You compared destinations.', factIds: ['compared:bali+maldives'] },
+    rationale: ['signal.back_and_forth'],
+  };
+  assert.ok(validateContextualStarters(envelope));
+  assert.equal(validateContextualStarters({ ...envelope, extra: true }), undefined);
+  assert.equal(validateContextualStarters({ ...envelope, intentSummary: 'legacy' }), undefined);
+  assert.equal(validateContextualStarters({ ...envelope, rationale: ['invented'] }), undefined);
+  const response = await generateContextualStarters(travelRequest, travelProfile, {
+    endpoint: 'http://localhost/aaa/starters', now: () => now,
+    fetchImpl: async () => Response.json(envelope),
+  });
+  assert.deepEqual(response.visitorBrief, envelope.visitorBrief);
+  assert.deepEqual(response.why, envelope.why);
+  assert.deepEqual(response.rationale, envelope.rationale);
 });
 
 test('unreachable service returns only approved templates without padding', async () => {
@@ -66,6 +89,22 @@ test('HTTP failures report status without exposing response bodies and still use
   } finally {
     console.warn = warn;
   }
+});
+
+test('a disallowed profile falls back to local approved wording after both service routes return 403', async () => {
+  const profile = { ...travelProfile, profileVersion: '1.4.0' };
+  const request = { ...travelRequest, journey: { ...travelRequest.journey, profileVersion: '1.4.0' } };
+  const urls: string[] = [];
+  const response = await generateContextualStarters(request, profile, {
+    endpoint: 'http://localhost/aaa/starters', now: () => now,
+    fetchImpl: async url => {
+      urls.push(String(url));
+      return Response.json({ code: 'auth.scope_denied' }, { status: 403 });
+    },
+  });
+  assert.deepEqual(urls, ['http://localhost/aaa/contextual-starters', 'http://localhost/aaa/starters']);
+  assert.equal(response.result.outcome, 'fallback');
+  assert.equal(response.result.starters[0].text, profile.playbooks[0].starters[0].text['en-US']);
 });
 
 test('no eligible helpful primary abstains rather than fabricating a question', () => {

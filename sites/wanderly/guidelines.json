@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "aaa-guidelines-2",
+  "profileId": "wanderly",
+  "profileVersion": "1.5.0",
+  "playbooks": [
+    {
+      "playbookId": "destination-compare", "locale": "en-US",
+      "intent": "Help compare the visitor's selected destinations", "tone": "Clear and neutral",
+      "allowedClaims": [
+        { "text": "Changing bases means road transfers. Keep fewer stops if your priority is uninterrupted beach time.", "evidenceIds": ["ev-destination-bali"] },
+        { "text": "Less variety beyond the resort. Meal plans, island transfers and villa types can change the total substantially.", "evidenceIds": ["ev-destination-maldives"] },
+        { "text": "More walking and luggage changes than an island trip. Popular seasonal dates need extra planning.", "evidenceIds": ["ev-destination-japan"] },
+        { "text": "Mountain outings depend on conditions. Add a flexible day rather than making every connection tight.", "evidenceIds": ["ev-destination-switzerland"] },
+        { "text": "Combining city and island or northern stays adds a domestic connection; choose one region if you want less packing.", "evidenceIds": ["ev-destination-thailand"] },
+        { "text": "Historic streets can be hilly and uneven. A central hotel and slower walking route may matter more than fitting in every sight.", "evidenceIds": ["ev-destination-portugal"] }
+      ],
+      "aspects": [
+        { "id": "transfers", "label": "transfers", "evidenceIds": ["ev-destination-bali", "ev-destination-maldives"] },
+        { "id": "total-cost", "label": "total cost", "evidenceIds": ["ev-destination-maldives"] }
+      ],
+      "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-destination-compare", "t-destination-tradeoffs", "t-destination-choose"], "approvedHeadline": "A quick comparison"
+    },
+    {
+      "playbookId": "travel-planning", "locale": "en-US",
+      "intent": "Help the visitor identify planning questions", "tone": "Reassuring and practical",
+      "allowedClaims": [{ "text": "Entry requirements and travel conditions can change; consult current official sources before making plans.", "evidenceIds": ["ev-travel-planning-guidance"] }],
+      "aspects": [], "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-travel-planning"], "approvedHeadline": "Explore your options"
+    },
+    {
+      "playbookId": "package-filter-help", "locale": "en-US",
+      "intent": "Help narrow package options using stated preferences", "tone": "Helpful and concise",
+      "allowedClaims": [{ "text": "Review package inclusions and exclusions, and confirm current price and availability before deciding.", "evidenceIds": ["ev-package-guidance"] }],
+      "aspects": [], "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-package-filter"], "approvedHeadline": "Explore your options"
+    },
+    {
+      "playbookId": "destination-detail-help", "locale": "en-US",
+      "intent": "Help the visitor consider a destination", "tone": "Curious and neutral",
+      "allowedClaims": [{ "text": "Consider trip pace, logistics and the experiences you want when choosing a destination.", "evidenceIds": ["ev-destination-guidance"] }],
+      "aspects": [], "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-destination-detail"], "approvedHeadline": "Explore your options"
+    },
+    {
+      "playbookId": "package-detail-help", "locale": "en-US",
+      "intent": "Help the visitor understand what to check before choosing a package", "tone": "Clear and practical",
+      "allowedClaims": [{ "text": "Review package inclusions and exclusions, and confirm current price and availability before deciding.", "evidenceIds": ["ev-package-guidance"] }],
+      "aspects": [], "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-package-detail"], "approvedHeadline": "Explore your options"
+    },
+    {
+      "playbookId": "planning-help", "locale": "en-US",
+      "intent": "Help with the evidence-backed sample itinerary", "tone": "Practical and neutral",
+      "allowedClaims": [], "aspects": [], "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-planning"], "approvedHeadline": "Explore your options"
+    },
+    {
+      "playbookId": "sample-package", "locale": "en-US",
+      "intent": "Explain the fictional sample package and its limitations", "tone": "Clear and neutral",
+      "allowedClaims": [], "aspects": [], "avoidTerms": ["guaranteed"], "exampleTemplateIds": ["t-package-help", "t-sample-package"], "approvedHeadline": "Explore your options"
+    }
+  ]
+}

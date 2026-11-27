@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "profileId": "wanderly",
-  "profileVersion": "1.4.0",
+  "profileVersion": "1.5.0",
   "tenantId": "tenant-wanderly-demo",
   "displayName": "Wanderly fictional demo",
   "locales": { "default": "en-US", "supported": ["en-US"] },
@@ -117,7 +117,7 @@
       { "evidenceId": "ev-destination-guidance", "version": "1.0.0", "summary": { "en-US": "Consider trip pace, logistics and the experiences you want when choosing a destination." } }
     ]
   },
-  "contextMap": { "maxChars": 600, "fields": [{ "key": "pageType", "from": "page.pageType" }, { "key": "pageRevision", "from": "page.pageRevision" }, { "key": "hesitation", "from": "derived.hesitation.status" }, { "key": "inProgress", "from": "derived.inProgress.status" }] },
+  "contextMap": { "maxChars": 600, "fields": [{ "key": "pageType", "from": "page.pageType" }, { "key": "hesitation", "from": "derived.hesitation.status" }, { "key": "inProgress", "from": "derived.inProgress.status" }] },
   "bcBinding": { "datastreamId": "demo-datastream", "knowledgeIds": ["wanderly-kb"] },
   "successEvent": { "id": "booking.confirmed-complete", "signalKind": "transaction.step", "transactionPhase": "complete", "pageTypes": ["booking"] }
 }

@@ -166,6 +166,25 @@ test('contextual results reach activation unchanged, and unavailable proxy falls
   assert.deepEqual(legacyPaths, ['/api/aaa/contextual-starters', '/api/aaa/starters']);
 });
 
+test('v2 contextual brief and explanation survive activation', async () => {
+  const f = fixture();
+  const visitorBrief = { text: 'Comparing destinations.', slots: { stage: 'comparing', entityIds: [], priorities: [], openQuestions: [] }, source: 'rendered' };
+  const why = { text: 'You compared destinations.', factIds: ['compared:bali+maldives'] };
+  const controller = createActivationController(f.provider, async (_url, init) => {
+    const request = JSON.parse(String(init?.body)) as StarterRequest;
+    const response = templateStarters(request, travelProfile, 'service.unavailable');
+    return Response.json({
+      ...response, schemaVersion: 'aaa-contextual-starters-2',
+      starterProvenance: response.result.starters.map(starter => ({ starterId: starter.starterId, source: 'approved' })),
+      visitorBrief, why, rationale: ['signal.back_and_forth'],
+    });
+  });
+  const prepared = await controller.prepare();
+  assert.deepEqual(prepared?.response.visitorBrief, visitorBrief);
+  assert.deepEqual(prepared?.response.why, why);
+  assert.deepEqual(prepared?.response.rationale, ['signal.back_and_forth']);
+});
+
 test('a fresh contextual activation passes exact starters to chat and a fresh brief to outgoing XDM', async () => {
   const f = fixture();
   const controller = createActivationController(f.provider, async (_url, init) => {

@@ -2,6 +2,7 @@ import type { SiteProfile, StarterRequest, StarterResult } from '../aaa/contract
 import { validateContract } from '../aaa/contracts/validate.ts';
 import { comparisonContext } from '../sites/wanderly/comparison.ts';
 import { validateContextualStarters, type ContextualStarters } from './aaa-contextual-starters.ts';
+import type { ContextualStarterResultV2 } from '../aaa/contracts/contextual/types.ts';
 
 export type StarterTrace = {
   reasonCodes: string[];
@@ -17,6 +18,9 @@ export type StarterResponse = {
   starterProvenance?: ContextualStarters['starterProvenance'];
   headline?: ContextualStarters['headline'];
   intentSummary?: string;
+  visitorBrief?: ContextualStarterResultV2['visitorBrief'];
+  why?: ContextualStarterResultV2['why'];
+  rationale?: ContextualStarterResultV2['rationale'];
 };
 
 export function starterServiceTimeoutMs(value = process.env.NEXT_PUBLIC_AAA_DEMO_SERVICE_TIMEOUT_MS): number {
@@ -204,7 +208,10 @@ export async function generateContextualStarters(request: StarterRequest, profil
     return {
       schemaVersion: contextual.schemaVersion, result: contextual.result, starterProvenance: contextual.starterProvenance,
       ...(contextual.headline ? { headline: contextual.headline } : {}),
-      ...(contextual.intentSummary ? { intentSummary: contextual.intentSummary } : {}),
+      ...(contextual.schemaVersion === 'aaa-contextual-starters-1' && contextual.intentSummary ? { intentSummary: contextual.intentSummary } : {}),
+      ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.visitorBrief ? { visitorBrief: contextual.visitorBrief } : {}),
+      ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.why ? { why: contextual.why } : {}),
+      ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.rationale ? { rationale: contextual.rationale } : {}),
       trace, ...(traceId ? { traceId } : {}),
     };
   } catch (error) {

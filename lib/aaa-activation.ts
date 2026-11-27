@@ -98,15 +98,18 @@ export function createActivationController(provider: ActivationProvider, fetchIm
             if (!body || typeof body !== 'object' || !('result' in body)) throw new Error('service.invalid_result');
             const result = validateContract('StarterResult', body.result);
             if (!result.valid) throw new Error('service.invalid_result');
-            const contextual = 'schemaVersion' in body && body.schemaVersion === 'aaa-contextual-starters-1'
+            const contextual = 'schemaVersion' in body && (body.schemaVersion === 'aaa-contextual-starters-1' || body.schemaVersion === 'aaa-contextual-starters-2')
               ? validateContextualStarters({
                 schemaVersion: body.schemaVersion, result: body.result,
                 ...('starterProvenance' in body ? { starterProvenance: body.starterProvenance } : {}),
                 ...('headline' in body ? { headline: body.headline } : {}),
                 ...('intentSummary' in body ? { intentSummary: body.intentSummary } : {}),
+                ...('visitorBrief' in body ? { visitorBrief: body.visitorBrief } : {}),
+                ...('why' in body ? { why: body.why } : {}),
+                ...('rationale' in body ? { rationale: body.rationale } : {}),
               }) : undefined;
             if (('schemaVersion' in body && !contextual)
-              || (!contextual && ('headline' in body || 'intentSummary' in body || 'starterProvenance' in body))) {
+              || (!contextual && ('headline' in body || 'intentSummary' in body || 'starterProvenance' in body || 'visitorBrief' in body || 'why' in body || 'rationale' in body))) {
               throw new Error('service.invalid_result');
             }
             const traceId = res.headers.get('X-AAA-Trace-Id') ?? ('traceId' in body ? body.traceId : undefined);
@@ -115,7 +118,10 @@ export function createActivationController(provider: ActivationProvider, fetchIm
               ...(contextual ? {
                 schemaVersion: contextual.schemaVersion, starterProvenance: contextual.starterProvenance,
                 ...(contextual.headline ? { headline: contextual.headline } : {}),
-                ...(contextual.intentSummary ? { intentSummary: contextual.intentSummary } : {}),
+                ...(contextual.schemaVersion === 'aaa-contextual-starters-1' && contextual.intentSummary ? { intentSummary: contextual.intentSummary } : {}),
+                ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.visitorBrief ? { visitorBrief: contextual.visitorBrief } : {}),
+                ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.why ? { why: contextual.why } : {}),
+                ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.rationale ? { rationale: contextual.rationale } : {}),
               } : {}),
               ...(typeof traceId === 'string' && /^[a-f0-9]{32}$/.test(traceId) ? { traceId } : {}),
             };

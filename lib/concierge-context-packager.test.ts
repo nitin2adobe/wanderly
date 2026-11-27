@@ -3,6 +3,7 @@ import test from 'node:test';
 import { retailJourney, retailProfile } from '../sites/retail/contract-examples.ts';
 import { travelJourney, travelProfile } from '../sites/wanderly/contract-examples.ts';
 import deployedProfile from '../sites/wanderly/profile.json' with { type: 'json' };
+import { validateContract } from '../aaa/contracts/validate.ts';
 import { conciergeJourneyContextXdm } from './ambient-context.ts';
 import {
   createConciergeJourneyContextReader,
@@ -132,7 +133,9 @@ test('includes a bounded visitor brief only when the complete XDM block fits', (
   assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, '😀'.repeat(401)), base);
   assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, 'line\nbreak'), base);
   assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, 'line\u0085break'), base);
-  assert.equal(packageConciergeJourneyContext(deployedProfile, travelJourney, 'x'.repeat(400))?.fields.visitorBrief, 'x'.repeat(400));
+  const deployed = validateContract('SiteProfile', deployedProfile);
+  assert.ok(deployed.valid);
+  assert.equal(packageConciergeJourneyContext(deployed.value, travelJourney, 'x'.repeat(400))?.fields.visitorBrief, 'x'.repeat(400));
   const unicode = packageConciergeJourneyContext({ ...travelProfile, contextMap: { ...travelProfile.contextMap, maxChars: 2_048 } }, travelJourney, '😀'.repeat(400))!;
   const rendered = JSON.stringify(conciergeJourneyContextXdm(unicode));
   assert.ok(Array.from(rendered).length <= MAX_CONCIERGE_CONTEXT_CODE_POINTS);
