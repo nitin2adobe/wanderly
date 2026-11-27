@@ -12,6 +12,7 @@ import { getCanonicalJourney, getCurrentMoment, evaluateCurrentSuppression, getC
 import { visitorBriefIsFresh, visitorBriefStore } from '@/lib/aaa-visitor-brief';
 import { COMPARISON_SNAPSHOT_REQUEST, comparisonRequest, type ComparisonSnapshot } from '@/lib/aaa-comparison';
 import { readAmbientPage } from '@/lib/ambient-context';
+import { nudgeWhy } from '@/lib/aaa-nudge-copy';
 import { comparisonContext, comparisonSummary, validateComparisonStarter } from '@/sites/wanderly/comparison';
 
 export default function ConciergePlugin({
@@ -238,7 +239,7 @@ export default function ConciergePlugin({
       <p>{primary.text}</p>
       <details className="conciergeWhy">
         <summary>Why am I seeing this?</summary>
-        <p>Your recent browsing matches an assistance rule for this page. This is optional; no chat message is sent unless you choose a question in chat.</p>
+        <p>{nudgeWhy(nudge.response.why?.text)}</p>
       </details>
       <div className="conciergeActions">
         <button type="button" className="btn" disabled={opening} onClick={() => void accept()}>{opening ? 'Opening chat...' : 'Open chat'}</button>
