@@ -83,3 +83,26 @@ test('comparison context carries the current Bali–Switzerland pair and only av
   assert.deepEqual(comparisonContext(journey, profile, ['bali', 'switzerland']).evidence.map(item => item.entityId), ['bali']);
   assert.equal(templateStarters(request, profile, 'service.unavailable').result.outcome, 'abstain');
 });
+
+test('focused comparison playbooks require evidence for both selected destinations', () => {
+  const active = createProfileRegistry({ policy: DEMO_EXPOSURE_POLICY }).publish(profileJson);
+  assert.ok(active.ok);
+  const profile = active.active.profile;
+  const page = { pageInstanceId: 'page', pageRevision: 1, pageType: 'comparison' };
+  let seq = 0;
+  const collector = createSignalCollector({
+    profile, context: () => ({ ...page, sessionId: 's', locale: 'en-US' }),
+    enabled: () => true, makeId: () => `signal-${++seq}`,
+  });
+  collector.track('entities.compared', { entityIds: ['bali', 'maldives'], entityType: 'destination' });
+  const journey = deriveJourney(profile, collector.signals(), { now: Date.now(), page })!;
+  const context = comparisonContext(journey, profile, ['bali', 'maldives']);
+  const request = { schemaVersion: '1.0.0' as const, requestId: 'request', requestedAt: new Date().toISOString(), momentRuleId: 'compare-destinations', journey };
+  const fallback = templateStarters(request, profile, 'service.unavailable').result;
+  assert.equal(fallback.playbookId, 'destination-compare');
+  for (const id of ['cost-focus', 'pace-fit']) {
+    const result = { ...fallback, playbookId: id, evidenceIds: [`ev-${id}-bali`, `ev-${id}-maldives`] };
+    assert.deepEqual(validateComparisonStarter(result, context), result);
+    assert.equal(validateComparisonStarter({ ...result, evidenceIds: [`ev-${id}-bali`, `ev-${id}-japan`] }, context), undefined);
+  }
+});

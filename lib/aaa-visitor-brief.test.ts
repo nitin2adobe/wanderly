@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createVisitorBriefStore, visitorBriefIsFresh } from './aaa-visitor-brief.ts';
+import profile from '../sites/wanderly/profile.json' with { type: 'json' };
 
 test('visitor briefs stay in memory only while their activation remains fresh', () => {
   const store = createVisitorBriefStore();
@@ -23,7 +24,7 @@ test('visitor briefs stay in memory only while their activation remains fresh', 
 });
 
 test('brief freshness is scoped to the session, profile and expiry rather than page', () => {
-  const identity = { sessionId: 'session', profileId: 'wanderly', profileVersion: '1.5.0' };
+  const identity = { sessionId: 'session', profileId: profile.profileId, profileVersion: profile.profileVersion };
   const now = Date.parse('2026-01-01T00:00:00Z');
   const expiry = '2026-01-01T00:01:00Z';
   assert.equal(visitorBriefIsFresh(identity, expiry, identity, now), true);

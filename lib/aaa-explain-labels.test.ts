@@ -11,15 +11,15 @@ test('explain labels do not invent a source or expose unrecognized codes', () =>
 });
 
 test('decision details show a differing rules choice and only known rationale codes', () => {
-  assert.deepEqual(decisionDetails('destination-compare', 'cost-focus', [
+  assert.deepEqual(decisionDetails({ baselinePlaybookId: 'destination-compare', selection: { playbookId: 'cost-focus' }, rationale: [
     'signal.price_focus', 'facet.explicit', 'signal.back_and_forth', 'signal.info_seeking', 'unknown', 'signal.price_focus',
-  ]), {
+  ] }), {
     rulesChoice: 'Rules would have chosen: Destination compare',
     reasons: [
       'because the visitor checked prices', 'because the visitor chose a preference',
       'because the visitor revisited options', 'because the visitor sought more information',
     ],
   });
-  assert.deepEqual(decisionDetails('destination-compare', 'destination-compare', null), { rulesChoice: undefined, reasons: [] });
-  assert.equal(decisionDetails('destination-compare', null, []).rulesChoice, undefined);
+  assert.deepEqual(decisionDetails({ baselinePlaybookId: 'destination-compare', selection: { playbookId: 'destination-compare' }, rationale: null }), { rulesChoice: undefined, reasons: [] });
+  assert.equal(decisionDetails({ baselinePlaybookId: 'destination-compare', selection: { playbookId: null } }).rulesChoice, undefined);
 });

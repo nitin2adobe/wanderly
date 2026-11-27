@@ -40,7 +40,12 @@ const rationaleLabels: Record<string, string> = {
   'signal.info_seeking': 'because the visitor sought more information',
 };
 
-export function decisionDetails(baseline: unknown, selected: unknown, rationale: unknown) {
+export function decisionDetails(explain: Record<string, unknown>) {
+  const baseline = explain.baselinePlaybookId;
+  const selection = explain.selection && typeof explain.selection === 'object' && !Array.isArray(explain.selection)
+    ? explain.selection as Record<string, unknown> : {};
+  const selected = selection.playbookId;
+  const rationale = explain.rationale;
   const rulesChoice = typeof baseline === 'string' && baseline && typeof selected === 'string' && selected && baseline !== selected
     ? `Rules would have chosen: ${friendlyExplainId(baseline)}`
     : undefined;

@@ -40,6 +40,7 @@ test('every exact demo template has an evidence-bound approval; commercial follo
   }
 });
 test('demo catalog and offer claims match lib/data rather than invented discounts or live availability', () => {
+  assert.deepEqual(catalog.filter(entry => entry.entityType === 'package').map(entry => entry.entityId).sort(), packages.map(pack => pack.id).sort());
   for (const entry of catalog) {
     assert.equal(entry.source, 'local-demo');
     assert.equal(entry.tenantId, profile.tenantId);
@@ -47,6 +48,7 @@ test('demo catalog and offer claims match lib/data rather than invented discount
       const pack = packages.find(item => item.id === entry.entityId);
       assert.ok(pack);
       assert.equal(entry.name, pack.packageName);
+      assert.equal(entry.destinationId, pack.slug);
       assert.equal(entry.nights, pack.nights);
       assert.equal(entry.pace, pack.pace);
       assert.equal(entry.samplePrice, pack.price);

@@ -53,7 +53,7 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
   const considered = list(data?.considered).map(object);
   const calls = list(data?.toolCalls).map(object);
   const selection = object(data?.selection);
-  const decision = decisionDetails(data?.baselinePlaybookId, selection.playbookId, selection.rationale);
+  const decision = decisionDetails(data ?? {});
   const wording = object(data?.wording);
   const starters = list(wording.starters).map(object);
   const validation = object(data?.validation);
