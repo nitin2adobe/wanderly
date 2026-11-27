@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AAA_TRACE_CHANGED, acceptFrameActivationTrace, getActivationTraces } from '@/lib/aaa-activation';
-import { decisionDetails, explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
+import { consideredReasons, decisionDetails, explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
 import GroundingScoreboard from '@/components/GroundingScoreboard';
 
 type RecordValue = Record<string, unknown>;
@@ -76,7 +76,7 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
         <section><h3>What it considered</h3>
           {considered.length ? <ul>{considered.map((item, i) => <li key={i}>
             {friendlyExplainId(text(item.playbookId)) || 'Help option'}: {item.eligible ? 'eligible' : 'not eligible'}
-            {list(item.reasonCodes).map(code => explainReason(text(code))).filter(Boolean).map(reason => <span key={reason}> · {reason}</span>)}
+            {consideredReasons(item).map((reason, index) => <span key={`${reason}-${index}`}> · {reason}</span>)}
           </li>)}</ul> : <p>No help options recorded.</p>}
         </section>
         <section><h3>What it looked up</h3>

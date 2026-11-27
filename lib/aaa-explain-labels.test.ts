@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decisionDetails, explainReason, provenanceLabel } from './aaa-explain-labels.ts';
+import { consideredReasons, decisionDetails, explainReason, provenanceLabel } from './aaa-explain-labels.ts';
 
 test('explain labels do not invent a source or expose unrecognized codes', () => {
   assert.equal(provenanceLabel('generated'), 'Chosen by the agent · passed checks');
@@ -8,6 +8,14 @@ test('explain labels do not invent a source or expose unrecognized codes', () =>
   assert.equal(provenanceLabel('other'), 'Source not recorded');
   assert.equal(explainReason('model.disabled'), 'Model switched off (templates only)');
   assert.equal(explainReason('unknown.code'), undefined);
+});
+
+test('eligible playbooks without approved pair wording show the availability instead of a match', () => {
+  assert.deepEqual(consideredReasons({ eligible: true, hasApprovedWording: false, reasonCodes: ['eligibility.matched'] }), ['No approved wording for this pair']);
+  assert.deepEqual(consideredReasons({ eligible: true, hasApprovedWording: false }), ['No approved wording for this pair']);
+  assert.deepEqual(consideredReasons({ eligible: true, hasApprovedWording: true, reasonCodes: ['eligibility.matched'] }), ['Fits this page and journey']);
+  assert.deepEqual(consideredReasons({ eligible: false, hasApprovedWording: null, reasonCodes: ['eligibility.facet'] }), ["Needs a preference the visitor hasn't chosen"]);
+  assert.deepEqual(consideredReasons({ eligible: true, reasonCodes: ['eligibility.matched'] }), ['Fits this page and journey']);
 });
 
 test('decision details show a differing rules choice and only known rationale codes', () => {

@@ -29,6 +29,15 @@ export function explainReason(code: string): string | undefined {
   return reasons[code];
 }
 
+export function consideredReasons(item: Record<string, unknown>): string[] {
+  const missingPairWording = item.eligible === true && item.hasApprovedWording === false;
+  const codes = Array.isArray(item.reasonCodes) ? item.reasonCodes : [];
+  const labels = codes.filter((code): code is string => typeof code === 'string')
+    .filter(code => !missingPairWording || code !== 'eligibility.matched')
+    .map(explainReason).filter((label): label is string => !!label);
+  return missingPairWording ? ['No approved wording for this pair', ...labels] : labels;
+}
+
 export const friendlyExplainId = (id: string) => id.replace(/[-_.]+/g, ' ').replace(/^./, c => c.toUpperCase());
 export const provenanceLabel = (source: string) => source === 'generated'
   ? 'Chosen by the agent · passed checks' : source === 'approved' ? 'Approved example' : 'Source not recorded';
