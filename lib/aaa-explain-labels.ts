@@ -32,3 +32,20 @@ export function explainReason(code: string): string | undefined {
 export const friendlyExplainId = (id: string) => id.replace(/[-_.]+/g, ' ').replace(/^./, c => c.toUpperCase());
 export const provenanceLabel = (source: string) => source === 'generated'
   ? 'Chosen by the agent · passed checks' : source === 'approved' ? 'Approved example' : 'Source not recorded';
+
+const rationaleLabels: Record<string, string> = {
+  'signal.price_focus': 'because the visitor checked prices',
+  'facet.explicit': 'because the visitor chose a preference',
+  'signal.back_and_forth': 'because the visitor revisited options',
+  'signal.info_seeking': 'because the visitor sought more information',
+};
+
+export function decisionDetails(baseline: unknown, selected: unknown, rationale: unknown) {
+  const rulesChoice = typeof baseline === 'string' && baseline && typeof selected === 'string' && selected && baseline !== selected
+    ? `Rules would have chosen: ${friendlyExplainId(baseline)}`
+    : undefined;
+  const reasons = Array.isArray(rationale)
+    ? [...new Set(rationale.filter((code): code is string => typeof code === 'string').map(code => rationaleLabels[code]).filter((label): label is string => !!label))]
+    : [];
+  return { rulesChoice, reasons };
+}

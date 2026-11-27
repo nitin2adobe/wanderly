@@ -42,6 +42,17 @@ test('comparison context carries the current Bali–Switzerland pair and only av
   const generated = { ...fallback.result, starters: [{ ...fallback.result.starters[0], text: 'Which of Bali and Switzerland better suits a slow trip?' }] };
   assert.deepEqual(validateComparisonStarter(generated, comparison), generated);
   assert.equal(validateComparisonStarter({ ...fallback.result, evidenceIds: ['ev-destination-bali', 'ev-destination-japan'] }, comparison), undefined);
+  const focusedEvidence = ['bali', 'switzerland'].map(id => ({
+    ...profile.evidenceSet.entries.find(entry => entry.evidenceId === `ev-destination-${id}`)!,
+    evidenceId: `ev-cost-${id}`,
+  }));
+  profile.evidenceSet.entries.push(...focusedEvidence);
+  profile.playbooks.push({ ...playbook, id: 'cost-focus', evidenceIds: focusedEvidence.map(entry => entry.evidenceId) });
+  const focusedContext = comparisonContext(journey, profile, ['bali', 'switzerland']);
+  const focused = { ...fallback.result, playbookId: 'cost-focus', evidenceIds: ['ev-cost-bali', 'ev-cost-switzerland'] };
+  assert.deepEqual(validateComparisonStarter(focused, focusedContext), focused);
+  assert.equal(validateComparisonStarter({ ...focused, evidenceIds: ['ev-cost-bali', 'ev-destination-switzerland'] }, focusedContext), undefined);
+  assert.equal(validateComparisonStarter({ ...focused, evidenceIds: ['ev-cost-bali', 'ev-cost-bali'] }, focusedContext), undefined);
   const provider: ActivationProvider = {
     read: () => ({ journey, profile, momentRuleId: 'unresolved-exploration', allowed: true, reasonCodes: [] }),
     recordShown: () => ({ allowed: true, reasonCodes: [] }), recordDismissed() {},
