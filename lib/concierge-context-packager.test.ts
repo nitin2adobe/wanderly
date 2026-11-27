@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { retailJourney, retailProfile } from '../sites/retail/contract-examples.ts';
 import { travelJourney, travelProfile } from '../sites/wanderly/contract-examples.ts';
+import deployedProfile from '../sites/wanderly/profile.json' with { type: 'json' };
 import { conciergeJourneyContextXdm } from './ambient-context.ts';
 import {
   createConciergeJourneyContextReader,
@@ -118,19 +119,21 @@ test('reader takes one profile, journey and current-page snapshot and rejects st
   assert.equal(stale(), undefined);
 });
 
-test('includes a bounded intent summary only when the complete XDM block fits', () => {
+test('includes a bounded visitor brief only when the complete XDM block fits', () => {
   const base = packageConciergeJourneyContext(travelProfile, travelJourney)!;
   const summary = 'Considering a beach trip';
   assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, summary), {
-    ...base, fields: { ...base.fields, intentSummary: summary },
+    ...base, fields: { ...base.fields, visitorBrief: summary },
   });
   const tight = { ...travelProfile, contextMap: { ...travelProfile.contextMap, maxChars: Array.from(JSON.stringify(conciergeJourneyContextXdm(base))).length } };
   assert.deepEqual(packageConciergeJourneyContext(tight, travelJourney, summary), base);
   const full = { ...travelProfile, contextMap: { maxChars: 2_048, fields: Array.from({ length: 16 }, (_, i) => ({ key: `f${i}`, from: 'page.pageType' })) } };
   assert.equal(Object.keys(packageConciergeJourneyContext(full, travelJourney, summary)!.fields).length, 16);
-  assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, '😀'.repeat(201)), base);
+  assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, '😀'.repeat(401)), base);
   assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, 'line\nbreak'), base);
-  const unicode = packageConciergeJourneyContext({ ...travelProfile, contextMap: { ...travelProfile.contextMap, maxChars: 2_048 } }, travelJourney, '😀'.repeat(200))!;
+  assert.deepEqual(packageConciergeJourneyContext(travelProfile, travelJourney, 'line\u0085break'), base);
+  assert.equal(packageConciergeJourneyContext(deployedProfile, travelJourney, 'x'.repeat(400))?.fields.visitorBrief, 'x'.repeat(400));
+  const unicode = packageConciergeJourneyContext({ ...travelProfile, contextMap: { ...travelProfile.contextMap, maxChars: 2_048 } }, travelJourney, '😀'.repeat(400))!;
   const rendered = JSON.stringify(conciergeJourneyContextXdm(unicode));
   assert.ok(Array.from(rendered).length <= MAX_CONCIERGE_CONTEXT_CODE_POINTS);
   assert.ok(new TextEncoder().encode(rendered).byteLength <= MAX_CONCIERGE_CONTEXT_UTF8_BYTES);

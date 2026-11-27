@@ -15,7 +15,7 @@ export type ConciergeJourneyContextSources = {
   getProfile: () => SiteProfile | undefined;
   getCanonicalJourney: () => JourneyState | undefined;
   getCurrentPage: () => PageRef | undefined;
-  getIntentSummary?: () => string | undefined;
+  getVisitorBrief?: () => string | undefined;
 };
 
 const safeId = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -46,7 +46,7 @@ function mappedValue(path: string, journey: JourneyState): string | undefined {
  * Selects only explicitly mapped, non-raw JourneyState fields. If any configured
  * field is unsupported, missing, or over budget, the complete context is omitted.
  */
-export function packageConciergeJourneyContext(profile: SiteProfile, journey: JourneyState, intentSummary?: string): ConciergeJourneyContext | undefined {
+export function packageConciergeJourneyContext(profile: SiteProfile, journey: JourneyState, visitorBrief?: string): ConciergeJourneyContext | undefined {
   const { contextMap } = profile;
   if (!Number.isSafeInteger(journey.page.pageRevision) || journey.page.pageRevision < 0
     || !Number.isSafeInteger(contextMap.maxChars) || contextMap.maxChars < 1
@@ -69,11 +69,11 @@ export function packageConciergeJourneyContext(profile: SiteProfile, journey: Jo
   };
   const context = { pageRevision: journey.page.pageRevision, fields };
   if (!fits(context)) return undefined;
-  if (typeof intentSummary === 'string' && intentSummary.trim()
-    && !/[\u0000-\u001f\u007f]/.test(intentSummary)
-    && codePoints(intentSummary) <= 200 && codePoints(intentSummary) <= MAX_CONCIERGE_CONTEXT_FIELD_CODE_POINTS
-    && Object.keys(fields).length < MAX_CONCIERGE_CONTEXT_FIELDS && !Object.hasOwn(fields, 'intentSummary')) {
-    const extended = { pageRevision: context.pageRevision, fields: { ...fields, intentSummary } };
+  if (typeof visitorBrief === 'string' && visitorBrief.trim()
+    && !/[\u0000-\u001f\u007f-\u009f]/.test(visitorBrief)
+    && codePoints(visitorBrief) <= 400 && codePoints(visitorBrief) <= MAX_CONCIERGE_CONTEXT_FIELD_CODE_POINTS
+    && Object.keys(fields).length < MAX_CONCIERGE_CONTEXT_FIELDS && !Object.hasOwn(fields, 'visitorBrief')) {
+    const extended = { pageRevision: context.pageRevision, fields: { ...fields, visitorBrief } };
     if (fits(extended)) return extended;
   }
   return context;
@@ -89,6 +89,6 @@ export function createConciergeJourneyContextReader(sources: ConciergeJourneyCon
       || journey.page.pageInstanceId !== page.pageInstanceId
       || journey.page.pageRevision !== page.pageRevision
       || journey.page.pageType !== page.pageType) return undefined;
-    return packageConciergeJourneyContext(profile, journey, sources.getIntentSummary?.());
+    return packageConciergeJourneyContext(profile, journey, sources.getVisitorBrief?.());
   };
 }

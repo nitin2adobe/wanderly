@@ -10,7 +10,7 @@ import { defaultNudgeSettings } from '../aaa/nudge-settings.ts';
 import { createNudgeSettingsClient } from './aaa-nudge-settings.ts';
 import { fetchNudgeSettings } from './aaa-nudge-service.ts';
 import { createConciergeClient, withConciergeSuggestion } from './brand-concierge-client.ts';
-import { createIntentSummaryStore } from './aaa-intent-summary.ts';
+import { createVisitorBriefStore } from './aaa-visitor-brief.ts';
 import { createConciergeJourneyContextReader } from './concierge-context-packager.ts';
 import { createAmbientContextHook } from './ambient-context.ts';
 
@@ -166,7 +166,7 @@ test('contextual results reach activation unchanged, and unavailable proxy falls
   assert.deepEqual(legacyPaths, ['/api/aaa/contextual-starters', '/api/aaa/starters']);
 });
 
-test('a fresh contextual activation passes exact starters to chat and its intent to outgoing XDM', async () => {
+test('a fresh contextual activation passes exact starters to chat and a fresh brief to outgoing XDM', async () => {
   const f = fixture();
   const controller = createActivationController(f.provider, async (_url, init) => {
     const request = JSON.parse(String(init?.body)) as StarterRequest;
@@ -179,8 +179,8 @@ test('a fresh contextual activation passes exact starters to chat and its intent
     });
   });
   const nudge = (await controller.prepare())!;
-  const store = createIntentSummaryStore();
-  store.set(nudge.response.intentSummary, () => controller.isFresh(nudge, true, true));
+  const store = createVisitorBriefStore();
+  store.set('Comparing destinations', () => controller.isFresh(nudge, true, true));
   let welcome: object | undefined;
   const client = createConciergeClient({
     ready: Promise.resolve(), legacyAutoSubmit: false, timeoutMs: 100,
@@ -196,7 +196,7 @@ test('a fresh contextual activation passes exact starters to chat and its intent
   assert.deepEqual(welcome, { arrays: { 'welcome.examples': starters.map(text => ({ text })) } });
   const readContext = createConciergeJourneyContextReader({
     getProfile: () => f.get().profile, getCanonicalJourney: () => f.get().journey,
-    getCurrentPage: () => f.get().journey.page, getIntentSummary: () => store.get(),
+    getCurrentPage: () => f.get().journey.page, getVisitorBrief: () => store.get(),
   });
   const hook = createAmbientContextHook(() => ({ url: 'https://demo.test/', path: '/', title: 'Wanderly' }), undefined, undefined, () => true, readContext);
   const outgoing: { xdm?: Record<string, unknown> } = {};

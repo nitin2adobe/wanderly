@@ -17,21 +17,11 @@ import { getAaaRuntime, isAaaEnabled } from '@/lib/aaa-runtime';
 import { createConciergeJourneyContextReader } from '@/lib/concierge-context-packager';
 import { getCanonicalJourney, getCurrentPage, getComparisonSelection } from '@/sites/wanderly/aaa';
 import { comparisonContext, comparisonSummary } from '@/sites/wanderly/comparison';
-import { intentSummaryStore } from '@/lib/aaa-intent-summary';
+import { visitorBriefStore } from '@/lib/aaa-visitor-brief';
 import { useAaaAvailability, useAaaConsent } from '@/components/AaaConsent';
 
 // True once this component has installed the Web SDK, so a remount does not mistake it for a host-owned one.
 let ownsAlloy = false;
-
-const readConciergeJourneyContext = createConciergeJourneyContextReader({
-  getProfile: () => {
-    const availability = getAaaRuntime().get();
-    return availability.enabled ? availability.active.profile : undefined;
-  },
-  getCanonicalJourney,
-  getCurrentPage,
-  getIntentSummary: () => intentSummaryStore.get(),
-});
 
 declare global {
   interface Window {
@@ -47,6 +37,15 @@ export default function BrandConcierge() {
   const consent = useAaaConsent();
   const [isOpen, setIsOpen] = useState(false);
   const isOpenRef = useRef(false);
+  const readConciergeJourneyContext = createConciergeJourneyContextReader({
+    getProfile: () => {
+      const availability = getAaaRuntime().get();
+      return availability.enabled ? availability.active.profile : undefined;
+    },
+    getCanonicalJourney,
+    getCurrentPage,
+    getVisitorBrief: () => isOpenRef.current ? visitorBriefStore.get() : undefined,
+  });
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const launcherRef = useRef<HTMLButtonElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
@@ -65,7 +64,7 @@ export default function BrandConcierge() {
   useEffect(() => {
     const runtime = getAaaRuntime();
     return runtime.subscribe(() => {
-      if (!runtime.isEnabled()) intentSummaryStore.clear();
+      if (!runtime.isEnabled()) visitorBriefStore.clear();
     });
   }, []);
 
@@ -73,7 +72,7 @@ export default function BrandConcierge() {
     const lost = wasGranted.current && consent !== 'granted';
     wasGranted.current = consent === 'granted';
     if (!aaa.enabled) {
-      intentSummaryStore.clear();
+      visitorBriefStore.clear();
       setSuggestion(null);
       setCopyStatus('');
     }
@@ -216,7 +215,6 @@ export default function BrandConcierge() {
       ? options.starterResult.starters.find(starter => starter.role === 'primary')?.text
       : options.initialMessage ?? context?.initialMessage;
     if (signal?.aborted) return { status: 'cancelled' };
-    const summaryToken = intentSummaryStore.set(options.intentSummary, options.stillEligible);
     setSuggestion(initialMessage ? { ...context, ...options, initialMessage } : null);
     setCopyStatus('');
     if (activationId) {
@@ -236,7 +234,6 @@ export default function BrandConcierge() {
     setIsOpen(true);
     const client = clientRef.current;
     if (!client) {
-      if (summaryToken) intentSummaryStore.clear(summaryToken);
       console.error('Adobe Brand Concierge is not initialized.');
       setStatus('error');
       throw new Error('Adobe Brand Concierge is not initialized.');
@@ -246,19 +243,15 @@ export default function BrandConcierge() {
       const examples = options.starterResult ? options.starterResult.starters.map(starter => starter.text) : context ? context.welcomeExamples : defaultConciergeWelcomeExamples();
       const result = await client.open(initialMessage, signal, !options.starterResult && options.automatic === true, examples, options.stillEligible, !!options.starterResult);
       if (clientRef.current !== client || sequence !== openSequence.current) {
-        if (summaryToken) intentSummaryStore.clear(summaryToken);
         return { status: 'cancelled' };
       }
-      if (result.status === 'existing' && summaryToken) intentSummaryStore.clear(summaryToken);
       if (result.status !== 'cancelled') setStatus('ready');
       else {
-        if (summaryToken) intentSummaryStore.clear(summaryToken);
         isOpenRef.current = false;
         setIsOpen(false);
       }
       return result;
     } catch (error) {
-      if (summaryToken) intentSummaryStore.clear(summaryToken);
       if (clientRef.current !== client || sequence !== openSequence.current) return { status: 'cancelled' };
       console.error('Unable to open Adobe Brand Concierge:', error);
       setStatus('error');
@@ -293,7 +286,7 @@ export default function BrandConcierge() {
       });
     };
     const onClose = () => {
-      intentSummaryStore.clear();
+      visitorBriefStore.clear();
       openSequence.current++;
       clientRef.current?.cancel();
       isOpenRef.current = false;
@@ -311,7 +304,7 @@ export default function BrandConcierge() {
 
   useEffect(() => {
     if (!chatAvailable) {
-      intentSummaryStore.clear();
+      visitorBriefStore.clear();
       clientRef.current?.cancel();
       isOpenRef.current = false;
       setIsOpen(false);

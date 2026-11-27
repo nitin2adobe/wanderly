@@ -1,12 +1,12 @@
 import { validContextualText } from './aaa-contextual-starters.ts';
 
-export function createIntentSummaryStore() {
+export function createVisitorBriefStore() {
   let current: { token: symbol; text: string; isFresh: () => boolean } | undefined;
   return {
     set(text: unknown, isFresh?: () => boolean): symbol | undefined {
       current = undefined;
-      if (!validContextualText(text, 200) || !isFresh) return;
-      const token = Symbol('intent-summary');
+      if (!validContextualText(text, 400) || /[\u007f-\u009f]/.test(text) || !isFresh) return;
+      const token = Symbol('visitor-brief');
       current = { token, text, isFresh };
       return token;
     },
@@ -15,7 +15,7 @@ export function createIntentSummaryStore() {
       try {
         if (current.isFresh()) return current.text;
       } catch (error) {
-        console.error('[aaa-intent] freshness.failed', error);
+        console.error('[aaa-brief] freshness.failed', error);
       }
       current = undefined;
     },
@@ -25,4 +25,4 @@ export function createIntentSummaryStore() {
   };
 }
 
-export const intentSummaryStore = createIntentSummaryStore();
+export const visitorBriefStore = createVisitorBriefStore();

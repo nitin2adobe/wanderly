@@ -3,7 +3,7 @@ import test from 'node:test';
 import { AMBIENT_SUMMARY_MAX_CHARS, createAmbientContextHook, readAmbientPage } from './ambient-context.ts';
 import { travelJourney, travelProfile } from '../sites/wanderly/contract-examples.ts';
 import { createConciergeJourneyContextReader } from './concierge-context-packager.ts';
-import { createIntentSummaryStore } from './aaa-intent-summary.ts';
+import { createVisitorBriefStore } from './aaa-visitor-brief.ts';
 
 const now = () => new Date('2026-11-25T00:00:00.000Z');
 
@@ -104,14 +104,15 @@ test('a failed journey provider does not prevent page XDM from being attached', 
   assert.equal('journeyContext' in (content.xdm?._adaptiveAssistance as object), false);
 });
 
-test('outgoing XDM includes the activation summary only while consent and freshness hold', () => {
-  const store = createIntentSummaryStore();
+test('outgoing XDM includes the visitor brief only while consent, chat and freshness hold', () => {
+  const store = createVisitorBriefStore();
   let allowed = true;
   let fresh = true;
+  let chatOpen = true;
   store.set('Comparing trips', () => fresh);
   const readContext = createConciergeJourneyContextReader({
     getProfile: () => travelProfile, getCanonicalJourney: () => travelJourney,
-    getCurrentPage: () => travelJourney.page, getIntentSummary: () => store.get(),
+    getCurrentPage: () => travelJourney.page, getVisitorBrief: () => chatOpen ? store.get() : undefined,
   });
   const hook = createAmbientContextHook(
     () => ({ url: 'https://demo.test/', path: '/', title: 'Wanderly' }), undefined, now, () => allowed, readContext,
@@ -121,10 +122,13 @@ test('outgoing XDM includes the activation summary only while consent and freshn
     hook(content);
     return content.xdm?._adaptiveAssistance as { journeyContext?: { fields: Record<string, string> } } | undefined;
   };
-  assert.equal(send()?.journeyContext?.fields.intentSummary, 'Comparing trips');
+  assert.equal(send()?.journeyContext?.fields.visitorBrief, 'Comparing trips');
+  chatOpen = false;
+  assert.equal(send()?.journeyContext?.fields.visitorBrief, undefined);
+  chatOpen = true;
   allowed = false;
   assert.equal(send(), undefined);
   allowed = true;
   fresh = false;
-  assert.equal(send()?.journeyContext?.fields.intentSummary, undefined);
+  assert.equal(send()?.journeyContext?.fields.visitorBrief, undefined);
 });

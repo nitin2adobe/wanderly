@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createIntentSummaryStore } from './aaa-intent-summary.ts';
+import { createVisitorBriefStore } from './aaa-visitor-brief.ts';
 
-test('intent summaries stay in memory only while their activation remains fresh', () => {
-  const store = createIntentSummaryStore();
+test('visitor briefs stay in memory only while their activation remains fresh', () => {
+  const store = createVisitorBriefStore();
   let fresh = true;
   const token = store.set('Comparing two destinations', () => fresh);
   assert.equal(store.get(), 'Comparing two destinations');
@@ -16,6 +16,6 @@ test('intent summaries stay in memory only while their activation remains fresh'
   assert.equal(store.get(), 'New visit');
   store.clear(next);
   assert.equal(store.get(), undefined);
-  assert.equal(store.set('x'.repeat(201), () => true), undefined);
+  assert.equal(store.set('x'.repeat(401), () => true), undefined);
   assert.equal(store.set('No freshness check'), undefined);
 });
