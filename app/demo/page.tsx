@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { setActivationMode } from '@/lib/activation-mode';
 import { CONCIERGE_CLOSE_EVENT } from '@/lib/concierge-connector';
 import { resetDestinationComparison, useDestinationComparison } from '@/components/DestinationComparison';
 import { EVENT_UPDATED } from '@/lib/events';
@@ -30,7 +29,6 @@ export default function DemoPage() {
     window.dispatchEvent(new Event(CONCIERGE_CLOSE_EVENT));
     clearCurrentSession(getSessionId());
     resetDestinationComparison();
-    setActivationMode('rules');
     setActive(null);
   };
 
@@ -87,7 +85,7 @@ export default function DemoPage() {
     <main className="shell"><section className="section topspace">
       <div className="eyebrow">Demo · Scenario replay</div>
       <h1 className="display">Concierge activation, on demand.</h1>
-      <p className="muted">Explore destination comparison, package selection and practical travel questions, then test restraint and dismissal. Each scenario starts a fresh Wanderly session in Rules mode and closes the previous chat window; Adobe conversation history is preserved. Journey data is kept per browser tab, so open <Link href="/agent">the inspector</Link> in this tab, or use the live split view.</p>
+      <p className="muted">Explore destination comparison, package selection and practical travel questions, then test restraint and dismissal. Each scenario starts a fresh Wanderly session and closes the previous chat window; Adobe conversation history is preserved. Journey data is kept per browser tab, so open <Link href="/agent">the inspector</Link> in this tab, or use the live split view.</p>
       <div className="demoGrid">
         {demoScenarios.map(s => (
           <div className="panel" key={s.id}>
