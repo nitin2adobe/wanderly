@@ -300,7 +300,8 @@ available; it is not a model transcript or evidence that Concierge used the
 brief. `/demo/compare` compares Concierge alone, local approved templates, and
 AAA on the same eligible journey. Its ambient block is a preview copied from
 the tenant template, not proof of delivery. Both pages label the grounding
-scoreboard as scripted; live review and latency remain pending.
+scoreboard as scripted, including a separate written-question gate replay; live
+review and latency remain pending.
 Contextual starter envelopes v2 and v3 are supported; v3 can label a helpful
 question as written by the agent after service checks. The draft
 `sites/wanderly/vocabulary.json` requires review before written starters are

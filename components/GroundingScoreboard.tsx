@@ -12,6 +12,7 @@ export default function GroundingScoreboard() {
     <p><strong>{proposals} proposals · {rejected} rejected · {summary.violationsReachingOutput} detected violations in output</strong></p>
     <p>{summary.sampleSize} scripted cases · {summary.date.slice(0, 10)} · fixed synthetic comparison</p>
     <p>Top rejection categories by scenario: {categories}.</p>
+    <p>Written questions: {summary.writtenStarters.proposals} scripted proposals · {summary.writtenStarters.accepted} accepted · {summary.writtenStarters.rejected} rejected · {summary.writtenStarters.violationsReachingOutput} detected violations in output.</p>
     <p className="muted">Not a live-model safety or quality claim. Live latency and review of at least 30 outputs are pending.</p>
   </aside>;
 }

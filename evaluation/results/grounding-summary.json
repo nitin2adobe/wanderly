@@ -1,6 +1,6 @@
 {
   "schemaVersion": "aaa-grounding-summary-1",
-  "date": "2026-11-27T15:18:05Z",
+  "date": "2026-11-28T10:36:39Z",
   "mode": "scripted",
   "live": false,
   "sampleSize": 7,
@@ -45,5 +45,18 @@
     "status": "pending",
     "minimumRequests": 30
   },
-  "status": "PASS"
+  "status": "PASS",
+  "writtenStarters": {
+    "proposals": 8,
+    "accepted": 1,
+    "rejected": 7,
+    "gateResults": {
+      "gate.passed": 1,
+      "gate.shape": 3,
+      "gate.vocabulary": 3,
+      "gate.names": 1
+    },
+    "violationsReachingOutput": 0,
+    "status": "PASS"
+  }
 }
