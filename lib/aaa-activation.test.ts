@@ -208,12 +208,13 @@ test('v3 written question and provenance survive activation unchanged', async ()
   assert.deepEqual(prepared?.response.rationale, ['signal.back_and_forth']);
 });
 
-test('a fresh written activation passes exact starters to chat and a fresh brief to outgoing XDM', async () => {
+test('a fresh written activation preserves catalog spelling in chat and a fresh brief in outgoing XDM', async () => {
   const f = fixture();
+  const question = 'How do Bali Slow Living and Island Rhythm compare?';
   const controller = createActivationController(f.provider, async (_url, init) => {
     const request = JSON.parse(String(init?.body)) as StarterRequest;
     const response = templateStarters(request, travelProfile, 'service.unavailable');
-    response.result.starters[0].text = 'Compare these two trips in my own terms?';
+    response.result.starters[0].text = question;
     return Response.json({
       ...response, schemaVersion: 'aaa-contextual-starters-3',
       starterProvenance: response.result.starters.map(starter => ({ starterId: starter.starterId, source: 'written' })),
@@ -222,6 +223,7 @@ test('a fresh written activation passes exact starters to chat and a fresh brief
     });
   });
   const nudge = (await controller.prepare())!;
+  assert.equal(nudge.response.result.starters[0].text, question);
   const store = createVisitorBriefStore();
   store.set('Comparing destinations', () => controller.isFresh(nudge, true, true));
   let welcome: object | undefined;
@@ -237,6 +239,7 @@ test('a fresh written activation passes exact starters to chat and a fresh brief
   const starters = nudge.response.result.starters.map(starter => starter.text);
   assert.equal((await client.open(starters[0], undefined, false, starters, () => controller.isFresh(nudge), true)).status, 'opened');
   assert.deepEqual(welcome, { arrays: { 'welcome.examples': starters.map(text => ({ text })) } });
+  assert.equal(starters[0], question);
   const readContext = createConciergeJourneyContextReader({
     getProfile: () => f.get().profile, getCanonicalJourney: () => f.get().journey,
     getCurrentPage: () => f.get().journey.page, getVisitorBrief: () => store.get(),
