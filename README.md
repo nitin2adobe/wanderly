@@ -409,3 +409,9 @@ AI `SILENT / WAIT / ASSIST` reasoning is deliberately deferred to Step 3.
 ## Step 2 complete - Journey Context Builder
 
 The `/agent/legacy` inspector shows raw events and deterministic interpreted context: destination switching, comparison activity, pricing exploration, information seeking, booking progression, overall journey progression, and potential friction. This normalized context is the input contract for Step 3 AI decisioning.
+
+## Scripted timing replay
+
+Run `npm run evaluate:timing` for a single scripted replay of the 37 labelled journeys. It uses the actual journey runtime, rule matching, suppression and exposure budgets; the deterministic scripted judge is a pipeline fixture, not a model evaluation. The zero-based `stepInFrom` labels are proposals pending approval. The report writes to stdout and reports latency as unavailable.
+
+The replay approximates one decision point 3 seconds after each event, with events 4 seconds apart; it does not simulate long stays, visibility, chat, form focus or dismissals. It infers missing comparison selections from the last two distinct destinations, emits no signal for date searches, and reuses runtime page instances for the same URL. Package-only comparisons may therefore be blocked by eligibility or comparison selection. Rules and scripted timing are independent sessions with actual exposure cooldown; their end-of-journey agreement reflects the final decision point, not the reference's exposure-free baseline. Live evaluation is not implemented.

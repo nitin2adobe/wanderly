@@ -6,6 +6,8 @@ export type LabelledJourney = {
   description: string;
   events: Array<[WanderlyEventType, string?]>;
   expectedDecision: 'SILENT' | 'WAIT' | 'ASSIST';
+  /** Proposed zero-based event index, evaluated after the event; pending user approval. */
+  stepInFrom?: number;
   expectedAssistanceType?: 'NONE' | 'DESTINATION_COMPARISON' | 'PACKAGE_SELECTION' | 'TRAVEL_INFORMATION';
   rationale: string;
   category: 'HEALTHY_PROGRESSION' | 'DESTINATION_COMPARISON' | 'PACKAGE_SELECTION' | 'INFORMATION_SEEKING' | 'AMBIGUOUS' | 'FALSE_POSITIVE_TRAP' | 'DISENGAGEMENT';
@@ -63,6 +65,24 @@ export const labelledJourneys: LabelledJourney[] = [
   d('holdout-compare-add-remove', 'Compare add then remove', 'The visitor adds and removes a comparison item.', [['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['COMPARE_ADD', 'maldives'], ['COMPARE_REMOVE', 'maldives']], 'WAIT', 'Backing out of a comparison is ambiguous; it may indicate a resolved or abandoned decision.', 'AMBIGUOUS', 'LOW'),
   d('holdout-package-then-book', 'Two packages then booking', 'The visitor looks at two packages and prices, then starts booking.', [['PACKAGE_VIEW', 'island-rhythm'], ['PRICE_VIEW'], ['PACKAGE_VIEW', 'barefoot-blue'], ['PRICE_VIEW'], ['BOOKING_START']], 'SILENT', 'Package exploration ended in booking progression.', 'HEALTHY_PROGRESSION'),
 ];
+
+// Proposals are fixed before any live evaluation; they are not yet user-approved.
+const proposedStepInFrom: Record<string, number> = {
+  'compare-bali-maldives-loop': 4,
+  'compare-three-destinations': 4,
+  'compare-switch-after-compare': 4,
+  'package-compare-assist': 5,
+  'package-backtrack': 5,
+  'info-japan-visa': 3,
+  'info-repeated-faq': 3,
+  'disengage-after-assist': 3,
+  'assist-explicit-compare': 4,
+  'holdout-faq-loop': 3,
+  'holdout-package-three-way': 6,
+};
+for (const journey of labelledJourneys) {
+  if (Object.hasOwn(proposedStepInFrom, journey.id)) journey.stepInFrom = proposedStepInFrom[journey.id];
+}
 
 export function journeyEvents(items: LabelledJourney['events'], index = 0): WanderlyEvent[] {
   return items.map(([eventType, entity], eventIndex) => ({
