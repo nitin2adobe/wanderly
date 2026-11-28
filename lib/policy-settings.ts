@@ -5,8 +5,8 @@ export const POLICY_SETTINGS_CHANGED = 'wanderly:policy-changed';
 
 export const policyLimits = {
   minConfidence: { min: 0.5, max: 0.99 },
-  cooldownSeconds: { min: 0, max: 600 },
-  maxInvitationsPerSession: { min: 1, max: 5 },
+  cooldownSeconds: { min: 600, max: 3600 },
+  maxInvitationsPerSession: { min: 0, max: 2 },
 } as const;
 
 const clamp = (value: unknown, min: number, max: number, fallback: number) =>

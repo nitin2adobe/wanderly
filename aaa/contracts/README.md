@@ -1,0 +1,69 @@
+# AAA core contracts v1 (AAA-3)
+
+Versioned JSON Schema (draft 2020-12) contracts for the Adaptive Assistance Agent. AAA is site-agnostic. Wanderly is one reference deployment, so these files contain no site or domain vocabulary. A test enforces this.
+
+**Status: v1 locally frozen at `schemaVersion` `1.0.0`; not released.** The canonical schemas live in the separate private Python AAA repository. The six files in `v1/` are a vendored consumer copy whose SHA-256 hashes match canonical commit `9d94ca7258442fc9b7914332f0ff10ba7e9e8f9b`. Do not edit them here; changes are made canonically and re-vendored. No release tag or version-pinning manifest exists yet.
+
+| Contract | Schema | Producer → consumer |
+|---|---|---|
+| CanonicalSignal | [v1/canonical-signal.schema.json](v1/canonical-signal.schema.json) | collector (E2) → journey model |
+| JourneyState | [v1/journey-state.schema.json](v1/journey-state.schema.json) | journey model (E2) → moment detector (E4), starter request |
+| SiteProfile | [v1/site-profile.schema.json](v1/site-profile.schema.json) | implementer (E3) → all core modules |
+| StarterRequest | [v1/starter-request.schema.json](v1/starter-request.schema.json) | client → `POST /aaa/starters` (E5) |
+| StarterResult | [v1/starter-result.schema.json](v1/starter-result.schema.json) | `/aaa/starters` (E5) → nudge/BC adapter (E6, E7) |
+
+Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types.ts` mirrors the schemas in TypeScript. `validate.ts` is a dependency-free validator for the schema subset used here, and it returns `{ path, message }` diagnostics. It throws on any unsupported keyword, so it never under-validates silently. The schemas also compile under Ajv 2020 strict mode.
+
+## Conventions
+
+- **schemaVersion** is required on every contract and is `1.0.0` in v1. Additive, backward-compatible changes bump the minor version. Breaking changes create `v2/` with new `$id`s (`urn:aaa:contracts:v<N>:<name>`).
+- **profileVersion** is an immutable semver of a reviewed Site Profile. Any change is a new version.
+- **provenance**: `explicit` means directly observed from a visitor action or host-declared data. `inferred` means derived by AAA or an adapter. Signals and facet values carry it, and derived states are always `inferred`.
+- **locale** is a BCP 47 tag on signals, journey state and results. Profiles declare `locales.default` and `locales.supported`.
+- **pageInstanceId + pageRevision** identify the page a signal, snapshot or result belongs to. `pageRevision` increments on meaningful in-page changes and is used for staleness checks. Only event-like or page-bound objects carry these fields. A SiteProfile does not.
+- **Raw versus derived**: CanonicalSignal holds only the six raw kinds. `hesitation` and `inProgress` exist only in `JourneyState.derived`, as tri-state (`active` / `inactive` / `uncertain`) values with their basis signals.
+- **Minimised free text; PII is a producer obligation**: IDs follow `^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`. Facet values are profile-declared IDs. Unknown properties are rejected. These rules reduce the risk of PII exposure, but no schema or ID pattern can prove that an identifier is not personal data (for example, `user.name.example` matches the pattern); producers and site profiles must emit opaque, non-PII IDs. Only starter text and profile labels are text, and they must be rendered as text, never as HTML.
+- **No tenant identity or URLs from clients**: StarterRequest has no tenant field. Tenant identity comes from the server-issued token. Profiles and requests have no URL fields.
+- **Profile thresholds**: hesitation parameters are profile-supplied. `inProgress.idleTimeoutMs` is optional legacy configuration with provisional use; inactivity alone must never end `inProgress`. `momentRules.exposureBudget` is optional and, when present, contains at least one nonnegative integer limit (`maxNudgesPerSession`, `minNudgeIntervalMs`). Zero nudges means no nudges.
+- **Signal mappings**: a string reads a host payload dot path; `{ "value": ... }` supplies a typed fixed value. Adapters must reject mapping/adapter conflicts with a diagnostic and validate the resulting signal.
+- **Visitor success**: `successEvent` is optional; absence means unavailable, not success. Its phase is allowed only for `transaction.step`, and cannot be `cancel`. The illustrative Wanderly profile omits it because the local booking UI only prepares a request, without reservation or payment.
+
+## Semantics that JSON Schema cannot express (consumer checks)
+
+- Every `pageType`, `entityType`, `facetId`, `topicId`, `playbookId` and `evidenceId` must exist in the referenced Site Profile version.
+- In a StarterRequest, the journey's `sessionId`, `profileVersion`, `locale` and `page` must be echoed in the StarterResult. The client drops results that no longer match.
+- `seq` and `pageRevision` are monotonic per session and per page instance.
+- `locale` must be in the profile's `locales.supported`.
+- `complete` and `cancel` are reported transaction phases, not proof of an outcome. Consumers must confirm completion/cancellation before ending `inProgress` and must never classify cancellation as visitor success, even when a configured transaction success matcher omits its phase.
+- The generic exposure-budget schema validates shape/ranges, not demo policy. The Site Profile loader in [`../profile/loader.ts`](../profile/loader.ts) rejects profile budgets weaker than D16. Separately, activated per-site Authoring nudge settings determine the runtime budget and dismissal/chat behavior; absent settings use the existing D16 defaults. Consent, transaction and focused-form safeguards remain mandatory.
+- `StarterResult` validation additionally checks that each starter's `offerId` appears in result `offerIds`. Offer approval, eligibility, provenance and freshness still require consumer checks.
+
+## Decisions
+
+**User-approved (AAA-3):** D4 signal set. The six raw kinds of PRD §3 form a closed v1 enum, and a new kind requires a schema version bump. The two derived states follow PRD §3.
+
+**Approved (D10):** a versioned JSON Site Profile validated by JSON Schema. Its canonical schemas belong in the private AAA repository, with a versioned copy consumed by Wanderly.
+
+**User-approved (D6 starter caps, demo):** StarterResult allows at most 3 starters in total. Whenever starters are shown, there is exactly one primary, and it is helpful. At most one starter may be promotional (`commercial`). All three caps are confirmed and enforced by the schema.
+
+**D16 defaults (demo):** at most two nudges per session, at least ten minutes apart, none after dismissal. Activated Authoring settings can change those runtime controls. `inProgress` still ends only on confirmed completion or cancellation, not inactivity or page exit.
+
+**Other provisional contract choices:** `transaction.step` uses shared phases `start`, `step`, `complete` and `cancel`. A commercial playbook must list `offerIds`. A fallback result must contain template starters and a reason code. An abstain result must contain no starters or offers and must have a reason code. These draft choices do not resolve remaining consumer review or limit decisions.
+
+## Review gate (AAA-3 acceptance)
+
+Per the canonical repository, the E2, E3/E4, E5, E6 and E7 owners passed contract-representation review for the frozen revision. That covers representation only, not runtime sign-off. The review topics were:
+
+- **E2 (signal capture):** the CanonicalSignal kind payloads, `source`, and whether JourneyState should embed raw signals or keep a bounded summary.
+- **E5 (starter service):** the StarterRequest payload size, given that it embeds the journey; the StarterResult outcome rules and reason codes.
+- **E6 (BC context):** the `contextMap` path allowlist and the `bcBinding` fields. These depend on the AAA-1 and AAA-2 findings.
+- **E7 (UX and localization):** starter roles, plain-text limits, and locale fallback.
+- **E3 and E4 (indirect consumers):** the `momentRules` shape is provisional.
+
+## Run the checks
+
+```sh
+node --experimental-strip-types --test aaa/contracts/*.test.ts aaa/profile/*.test.ts
+```
+
+The fixtures in `examples/` (travel and retail) are illustrative. They are not the AAA-14 or AAA-15 profiles.

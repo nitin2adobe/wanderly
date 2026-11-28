@@ -43,6 +43,24 @@ test('default uses documented welcome suggestions without auto submitting', asyn
   assert.equal('welcome.examples' in config.arrays, false);
 });
 
+test('welcome has zero to three total pills, including the primary, without defaults padding', () => {
+  const config = { arrays: { 'welcome.examples': [{ text: 'Default' }] } };
+  assert.deepEqual(withConciergeSuggestion(config, undefined, []), { arrays: { 'welcome.examples': [] } });
+  const result = withConciergeSuggestion(config, 'Primary', ['Primary', 'Second', 'Third', 'Fourth']);
+  assert.deepEqual(result, { arrays: { 'welcome.examples': [{ text: 'Primary' }, { text: 'Second' }, { text: 'Third' }] } });
+});
+
+test('activation freshness is rechecked after SDK readiness, before any bootstrap', async () => {
+  let ready!: () => void;
+  let eligible = true;
+  const f = fixture({ ready: new Promise<void>(resolve => { ready = resolve; }) });
+  const pending = f.client.open('Primary', undefined, false, ['Primary'], () => eligible);
+  eligible = false;
+  ready();
+  assert.equal((await pending).status, 'cancelled');
+  assert.deepEqual(f.messages, []);
+});
+
 test('unsent welcome suggestions refresh when the current destination changes without duplicate opens', async () => {
   const f = fixture({ delay: 5 });
   await f.client.open('Compare Bali and Maldives');
@@ -73,7 +91,19 @@ test('dynamic example lists retain the primary question, deduplicate and preserv
   assert.deepEqual(withConciergeSuggestion(config, 'Explore Japan', ['Explore Japan', ' Japan luggage? ', 'Japan entry?', '']), {
     arrays: { other: [1], 'welcome.examples': [{ text: 'Explore Japan' }, { text: 'Japan luggage?' }, { text: 'Japan entry?' }] },
   });
+
   assert.deepEqual(config.arrays['welcome.examples'], [{ text: 'Old default' }]);
+});
+
+test('validated starter examples retain exact text and ordering without changing manual suggestions', async () => {
+  const examples = [' Secondary ', 'Primary', ' Secondary '];
+  assert.deepEqual(withConciergeSuggestion({}, 'Primary', examples, true), {
+    arrays: { 'welcome.examples': examples.map(text => ({ text })) },
+  });
+  const f = fixture();
+  await f.client.open('Primary', undefined, false, examples, () => true, true);
+  assert.deepEqual(f.examples, [examples]);
+  assert.deepEqual(f.messages, [undefined]);
 });
 
 test('changed secondary examples refresh an unsent welcome but preserve a submitted conversation', async () => {
@@ -145,6 +175,15 @@ test('SDK errors fail explicitly and a later manual opening remains possible', a
   await assert.rejects(pending, /SDK or service error/);
 });
 
+test('a failed AAA bootstrap does not prevent a later manual opening or replay a question', async () => {
+  const f = fixture();
+  f.fail(new Error('SDK bootstrap failed'));
+  await assert.rejects(f.client.open('AAA primary', undefined, false, ['AAA primary']), /bootstrap failed/);
+  f.fail();
+  assert.equal((await f.client.open(undefined, undefined, false, ['Manual question'])).status, 'opened');
+  assert.deepEqual(f.messages, [undefined, undefined]);
+});
+
 test('queued opening does not bootstrap after route eligibility changes', async () => {
   let resolve!: () => void;
   const f = fixture({ ready: new Promise<void>(done => { resolve = done; }) });
@@ -196,4 +235,51 @@ test('manual contextual opening is permitted when proactive opening is ineligibl
   assert.equal((await client.open('Help with my booking', undefined, true)).status, 'cancelled');
   assert.equal((await client.open('Help with my booking', undefined, false)).status, 'opened');
   assert.deepEqual(questions, ['Help with my booking']);
+});
+
+test('welcome reset replaces a hidden personalized welcome with defaults', async () => {
+  const f = fixture();
+  assert.equal(await f.client.resetWelcome(['Default']), 'unchanged');
+  await f.client.open('Bali entry?', undefined, false, ['Bali transfers?']);
+  f.leavePage();
+  assert.equal(await f.client.resetWelcome(['Default']), 'reset');
+  assert.deepEqual(f.suggestions.at(-1), undefined);
+  assert.deepEqual(f.examples.at(-1), ['Default']);
+  assert.equal(await f.client.resetWelcome(['Default']), 'unchanged');
+  assert.equal(f.examples.length, 2);
+});
+
+test('revocation replaces personalized examples after a submitted conversation and permits manual chat', async () => {
+  const f = fixture({ legacy: true });
+  await f.client.open('Bali entry?', undefined, false, ['Bali transfers?']);
+  f.emit({ eventType: 'query:submitted', data: { query: 'Visitor question' } });
+
+  assert.equal(await f.client.resetWelcome(['Default']), 'reset');
+  assert.deepEqual(f.suggestions, ['Bali entry?', undefined]);
+  assert.deepEqual(f.examples.at(-1), ['Default']);
+  assert.equal(await f.client.resetWelcome(['Default']), 'unchanged');
+  assert.equal((await f.client.open(undefined, undefined, false, ['Default'])).status, 'existing');
+  assert.deepEqual(f.messages, [undefined, undefined]);
+
+  f.emit({ eventType: 'query:submitted', data: { query: 'New manual question' } });
+  assert.equal((await f.client.open('Another suggestion', undefined, false)).status, 'existing');
+  f.emit({ eventType: 'history:cleared' });
+  assert.equal((await f.client.open('Another suggestion', undefined, false)).status, 'opened');
+});
+
+test('welcome reset clears the previous conversation state after re-bootstrap', async () => {
+  const f = fixture();
+  await f.client.open('Personalized question');
+  f.emit({ eventType: 'query:submitted', data: { query: 'Visitor question' } });
+  await f.client.resetWelcome(['Default']);
+  assert.equal((await f.client.open('New suggestion', undefined, false)).status, 'opened');
+});
+
+test('a failed welcome reset is retried rather than treated as configured', async () => {
+  const f = fixture();
+  await f.client.open('Bali entry?');
+  f.fail(new Error('boom'));
+  await assert.rejects(f.client.resetWelcome(['Default']), /boom/);
+  f.fail();
+  assert.equal(await f.client.resetWelcome(['Default']), 'reset');
 });
