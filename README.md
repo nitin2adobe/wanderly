@@ -64,7 +64,9 @@ npm run build
 Remove-Item Env:WANDERLY_STATIC_EXPORT
 ```
 
-The exported `out` directory has no live `/api/assistance/reason` endpoint.
+The static export omits every `app/api` route handler (`.ts` files are excluded
+from route discovery only when `WANDERLY_STATIC_EXPORT=true`), so the exported
+`out` directory has no live `/api/assistance/reason` or `/api/aaa/*` endpoints.
 Use rules-mode assistance on Pages; live server-side AI reasoning requires a
 Next.js server deployment. A normal `npm run build` retains that server endpoint.
 
