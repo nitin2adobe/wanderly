@@ -412,6 +412,8 @@ The `/agent/legacy` inspector shows raw events and deterministic interpreted con
 
 ## Scripted timing replay
 
-Run `npm run evaluate:timing` for a single scripted replay of the 37 labelled journeys. It uses the actual journey runtime, rule matching, suppression and exposure budgets; the deterministic scripted judge is a pipeline fixture, not a model evaluation. The zero-based `stepInFrom` labels are proposals pending approval. The report writes to stdout and reports latency as unavailable.
+Run `npm run evaluate:timing` for a single scripted replay of the 37 labelled journeys. It uses the actual journey runtime, rule matching, suppression and exposure budgets; the deterministic scripted judge is a pipeline fixture, not a model evaluation. The zero-based `stepInFrom` labels are approved. The report writes to stdout and reports latency as unavailable.
 
 The replay approximates one decision point 3 seconds after each event, with events 4 seconds apart; it does not simulate long stays, visibility, chat, form focus or dismissals. It infers missing comparison selections from the last two distinct destinations, emits no signal for date searches, and reuses runtime page instances for the same URL. Package-only comparisons may therefore be blocked by eligibility or comparison selection. Rules and scripted timing are independent sessions with actual exposure cooldown; their end-of-journey agreement reflects the final decision point, not the reference's exposure-free baseline. Live evaluation is not implemented.
+
+The report includes separate holdout metrics and a destination/package swap check. ASSIST journeys with invalid comparison selection at their labelled moment are listed as unreachable and excluded from assist and end-agreement denominators rather than counted as misses. The swap check compares decisions, safeguards and call counts, not fabricated model or latency results.

@@ -6,7 +6,7 @@ export type LabelledJourney = {
   description: string;
   events: Array<[WanderlyEventType, string?]>;
   expectedDecision: 'SILENT' | 'WAIT' | 'ASSIST';
-  /** Proposed zero-based event index, evaluated after the event; pending user approval. */
+  /** Approved zero-based event index, evaluated after the event. */
   stepInFrom?: number;
   expectedAssistanceType?: 'NONE' | 'DESTINATION_COMPARISON' | 'PACKAGE_SELECTION' | 'TRAVEL_INFORMATION';
   rationale: string;
@@ -66,8 +66,8 @@ export const labelledJourneys: LabelledJourney[] = [
   d('holdout-package-then-book', 'Two packages then booking', 'The visitor looks at two packages and prices, then starts booking.', [['PACKAGE_VIEW', 'island-rhythm'], ['PRICE_VIEW'], ['PACKAGE_VIEW', 'barefoot-blue'], ['PRICE_VIEW'], ['BOOKING_START']], 'SILENT', 'Package exploration ended in booking progression.', 'HEALTHY_PROGRESSION'),
 ];
 
-// Proposals are fixed before any live evaluation; they are not yet user-approved.
-const proposedStepInFrom: Record<string, number> = {
+// Labels were approved before any live evaluation.
+const approvedStepInFrom: Record<string, number> = {
   'compare-bali-maldives-loop': 4,
   'compare-three-destinations': 4,
   'compare-switch-after-compare': 4,
@@ -81,7 +81,7 @@ const proposedStepInFrom: Record<string, number> = {
   'holdout-package-three-way': 6,
 };
 for (const journey of labelledJourneys) {
-  if (Object.hasOwn(proposedStepInFrom, journey.id)) journey.stepInFrom = proposedStepInFrom[journey.id];
+  if (Object.hasOwn(approvedStepInFrom, journey.id)) journey.stepInFrom = approvedStepInFrom[journey.id];
 }
 
 export function journeyEvents(items: LabelledJourney['events'], index = 0): WanderlyEvent[] {

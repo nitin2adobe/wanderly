@@ -11,6 +11,7 @@ import { labelledJourneys, type LabelledJourney } from '../lib/labelled-journeys
 import { pageForEvent } from '../lib/demo-scenarios.ts';
 import { getDestination, getPackage } from '../lib/data.ts';
 import { faqDestinationId } from '../sites/wanderly/signals.ts';
+import { swapJourney } from './timing-swap-fixture.ts';
 import profile from '../sites/wanderly/profile.json' with { type: 'json' };
 
 type PointKind = 'page_settled' | 'activity_paused' | 'revisit';
@@ -19,6 +20,7 @@ export type ScriptedJudge = (input: JudgeInput) => 'assist' | 'silent';
 type Trace = {
   eventIndex: number; event: string; point: PointKind; secondsOnPage: number;
   outcome: 'assist' | 'silent' | 'blocked'; reasonCodes: string[]; rule?: string;
+  invalidComparisonSelection: boolean;
   transaction: JourneyState['derived']['inProgress']['status'] | 'unavailable';
 };
 type Replay = { id: string; label: LabelledJourney['expectedDecision']; stepInFrom?: number; calls: number; trace: Trace[] };
@@ -105,14 +107,18 @@ export function replayJourney(j: LabelledJourney, mode: 'rules' | 'scripted', ju
       if (outcome === 'assist' && !rt.shown().allowed) throw new Error('Suppression changed before recording a step-in');
     }
     trace.push({ eventIndex, event: `${type}${entity ? `:${entity}` : ''}`, point, secondsOnPage: (t - pageStart) / 1000,
-      outcome, reasonCodes, ...(moment ? { rule: moment.id } : {}), transaction: journey?.derived.inProgress.status ?? 'unavailable' });
+      outcome, reasonCodes, invalidComparisonSelection: !validSelection,
+      ...(moment ? { rule: moment.id } : {}), transaction: journey?.derived.inProgress.status ?? 'unavailable' });
   });
   return { id: j.id, label: j.expectedDecision, ...(j.stepInFrom === undefined ? {} : { stepInFrom: j.stepInFrom }), calls, trace };
 }
 
 export function summarize(rows: Replay[]) {
   const nonAssist = rows.filter(r => r.label !== 'ASSIST');
-  const assist = rows.filter(r => r.label === 'ASSIST');
+  const unreachable = rows.filter(r => r.label === 'ASSIST' && r.stepInFrom !== undefined
+    && r.trace[r.stepInFrom]?.invalidComparisonSelection);
+  const reachable = rows.filter(r => !unreachable.includes(r));
+  const assist = reachable.filter(r => r.label === 'ASSIST');
   const first = (r: Replay) => r.trace.find(p => p.outcome === 'assist')?.eventIndex;
   const counts = rows.map(r => r.calls).sort((a, b) => a - b);
   const middle = Math.floor(counts.length / 2);
@@ -121,7 +127,8 @@ export function summarize(rows: Replay[]) {
     earlyAssist: assist.filter(r => { const i = first(r); return i !== undefined && r.stepInFrom !== undefined && i < r.stepInFrom; }).length,
     onTime: { count: assist.filter(r => { const i = first(r); return i !== undefined && r.stepInFrom !== undefined && i >= r.stepInFrom; }).length, total: assist.length },
     missed: assist.filter(r => first(r) === undefined).length,
-    endAgreement: { count: rows.filter(r => (r.label === 'ASSIST') === (r.trace.at(-1)?.outcome === 'assist')).length, total: rows.length },
+    unreachable: { count: unreachable.length, journeyIds: unreachable.map(r => r.id) },
+    endAgreement: { count: reachable.filter(r => (r.label === 'ASSIST') === (r.trace.at(-1)?.outcome === 'assist')).length, total: reachable.length },
     callsPerJourney: { median: counts.length ? (counts.length % 2 ? counts[middle] : (counts[middle - 1] + counts[middle]) / 2) : 0, max: counts.at(-1) ?? 0 },
     latencyMs: null,
     stepInsAfterBooking: rows.reduce((sum, r) => {
@@ -137,12 +144,30 @@ export function runScriptedReplay(journeys: LabelledJourney[] = labelledJourneys
   }
   const rules = journeys.map(j => replayJourney(j, 'rules'));
   const scripted = journeys.map(j => replayJourney(j, 'scripted'));
-  return { description: 'single scripted replay of labelled journeys', labels: 'proposed, pending approval', approximations: [
+  const swapMismatches = journeys.flatMap((j, i) => (['rules', 'scripted'] as const).flatMap(mode => {
+    const original = mode === 'rules' ? rules[i] : scripted[i];
+    const swapped = replayJourney(swapJourney(j), mode);
+    const decisions = (row: Replay) => row.trace.map(p => ({
+      point: p.point, outcome: p.outcome, reasonCodes: p.reasonCodes,
+      rule: p.rule, invalidComparisonSelection: p.invalidComparisonSelection, transaction: p.transaction,
+    }));
+    return JSON.stringify(decisions(original)) === JSON.stringify(decisions(swapped)) && original.calls === swapped.calls
+      ? [] : [{ id: j.id, mode }];
+  }));
+  const report = (rows: Replay[]) => ({
+    metrics: summarize(rows),
+    nonHoldout: summarize(rows.filter(row => !row.id.startsWith('holdout-'))),
+    holdout: summarize(rows.filter(row => row.id.startsWith('holdout-'))),
+    journeys: rows,
+  });
+  return { description: 'single scripted replay of labelled journeys', labels: 'approved', approximations: [
     '4 seconds between events; one approximated decision point per event, 3 seconds after the event; no long-stay points.',
     'Comparison selection inferred from the last two distinct destinations; DATE_SEARCH emits no signal; same-URL page views reuse the runtime page.',
     'No hidden tabs, form focus, chat or dismissals; actual runtime suppression and exposure budgets are applied.',
     'Scripted judge is a deterministic pipeline fixture, not a model or live timing result; latency is not measured.',
-  ], rules: { metrics: summarize(rules), journeys: rules }, scripted: { metrics: summarize(scripted), journeys: scripted } };
+    'Unreachable means invalid comparison selection at the labelled moment; such journeys are excluded from assist and agreement denominators.',
+  ], destinationSwap: { passed: swapMismatches.length === 0, mismatches: swapMismatches },
+  rules: report(rules), scripted: report(scripted) };
 }
 
 if (basename(process.argv[1] || '') === 'replay-timing.ts') {
@@ -150,5 +175,9 @@ if (basename(process.argv[1] || '') === 'replay-timing.ts') {
   if (args.length !== 2 || args[0] !== '--judge' || args[1] !== 'scripted') {
     console.error('Only --judge scripted is supported; live evaluation is not authorized.');
     process.exitCode = 1;
-  } else console.log(JSON.stringify(runScriptedReplay(), null, 2));
+  } else {
+    const report = runScriptedReplay();
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.destinationSwap.passed) process.exitCode = 1;
+  }
 }
