@@ -28,8 +28,10 @@ function BookingForm({ initialDestination, initialPackage }: { initialDestinatio
   const choices = getPackagesForDestination(destinationSlug);
   const today = new Date();
   const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const progress = (entity?: string) => {
-    track(started.current ? 'BOOKING_STEP' : 'BOOKING_START', window.location.pathname, entity);
+  const progress = (selection: { destinationSlug: string; packageId: string } = { destinationSlug, packageId }) => {
+    const selected = getBookingSelection(selection.destinationSlug, selection.packageId);
+    if (!selected) throw new Error('Unsupported trip selection.');
+    track(started.current ? 'BOOKING_STEP' : 'BOOKING_START', window.location.pathname, selected.pack?.id ?? selected.destination.slug);
     started.current = true;
   };
   if (!destination) return <div className="notice" role="alert">This destination is unavailable. <Link href="/booking">Start a new plan</Link></div>;
@@ -45,17 +47,17 @@ function BookingForm({ initialDestination, initialPackage }: { initialDestinatio
   </dl>;
 
   return <div className="booking">
-    {step === 'plan' ? <form className="panel" onSubmit={event => { event.preventDefault(); progress('review-request'); setStep('review'); }}>
+    {step === 'plan' ? <form className="panel" onSubmit={event => { event.preventDefault(); progress(); setStep('review'); }}>
       <div className="eyebrow">Step 1 / Your preferences</div><h2 className="contentHeading">Make it your trip.</h2>
-      <div className="field"><label htmlFor="booking-destination">Destination</label><select id="booking-destination" value={destinationSlug} onChange={event => { setDestinationSlug(event.target.value); setPackageId(''); progress(event.target.value); }}>{destinations.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></div>
-      <div className="field"><label htmlFor="booking-package">Journey</label><select id="booking-package" value={packageId} onChange={event => { setPackageId(event.target.value); const selected = getPackage(event.target.value); if (selected) setPace(selected.pace); progress(event.target.value || 'tailored-journey'); }}><option value="">Help me tailor a journey</option>{choices.map(item => <option key={item.id} value={item.id}>{item.packageName} / {item.days} / {item.price}</option>)}</select></div>
-      <div className="field"><label htmlFor="booking-date">Preferred departure date</label><input id="booking-date" type="date" required min={minDate} value={date} onChange={event => { setDate(event.target.value); track('DATE_SEARCH', window.location.pathname); progress('departure-date'); }}/></div>
-      <div className="field"><label htmlFor="booking-travellers">Travellers</label><select id="booking-travellers" value={travellers} onChange={event => { setTravellers(event.target.value); progress('travellers'); }}>{['1 adult', '2 adults', '2 adults + 1 child', '4 adults'].map(value => <option key={value}>{value}</option>)}</select></div>
+      <div className="field"><label htmlFor="booking-destination">Destination</label><select id="booking-destination" value={destinationSlug} onChange={event => { setDestinationSlug(event.target.value); setPackageId(''); progress({ destinationSlug: event.target.value, packageId: '' }); }}>{destinations.map(item => <option key={item.slug} value={item.slug}>{item.name}</option>)}</select></div>
+      <div className="field"><label htmlFor="booking-package">Journey</label><select id="booking-package" value={packageId} onChange={event => { setPackageId(event.target.value); const selected = getPackage(event.target.value); if (selected) setPace(selected.pace); progress({ destinationSlug, packageId: event.target.value }); }}><option value="">Help me tailor a journey</option>{choices.map(item => <option key={item.id} value={item.id}>{item.packageName} / {item.days} / {item.price}</option>)}</select></div>
+      <div className="field"><label htmlFor="booking-date">Preferred departure date</label><input id="booking-date" type="date" required min={minDate} value={date} onChange={event => { setDate(event.target.value); track('DATE_SEARCH', window.location.pathname); progress(); }}/></div>
+      <div className="field"><label htmlFor="booking-travellers">Travellers</label><select id="booking-travellers" value={travellers} onChange={event => { setTravellers(event.target.value); progress(); }}>{['1 adult', '2 adults', '2 adults + 1 child', '4 adults'].map(value => <option key={value}>{value}</option>)}</select></div>
       <div className="field"><label htmlFor="booking-pace">Preferred trip pace</label><select id="booking-pace" value={pace} onChange={event => {
         const value = event.target.value;
         if (value !== 'Relaxed' && value !== 'Balanced' && value !== 'Active') throw new Error('Unsupported trip pace selection.');
         setPace(value);
-        progress('trip-pace');
+        progress();
       }}>{['Relaxed', 'Balanced', 'Active'].map(value => <option key={value}>{value}</option>)}</select></div>
       <button className="btn" type="submit">Review my trip</button>
     </form> : <section className="panel" aria-labelledby="request-heading">
@@ -65,7 +67,7 @@ function BookingForm({ initialDestination, initialPackage }: { initialDestinatio
       {step === 'prepared' && <div className="notice" role="status">Prepared in this page only. No request was sent, no dates were reserved and no payment was collected. This is not a booking confirmation.</div>}
       <div className="contentActions">
         <button className="btn ghost" type="button" onClick={() => setStep('plan')}>Edit preferences</button>
-        {step === 'review' && <button className="btn" type="button" onClick={() => { progress('demo-request-prepared'); setStep('prepared'); }}>Prepare demo request</button>}
+        {step === 'review' && <button className="btn" type="button" onClick={() => { progress(); setStep('prepared'); }}>Prepare demo request</button>}
         {step === 'prepared' && <Link className="btn ghost" href={`/destinations/${destinationSlug}`}>Back to {destination.name}</Link>}
       </div>
     </section>}

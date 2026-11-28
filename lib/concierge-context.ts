@@ -1,4 +1,4 @@
-import { destinations, getDestination, getPackage } from './data.ts';
+import { destinations, getBookingSelection, getDestination, getPackage } from './data.ts';
 import type { ConciergeHandoff } from './concierge-handoff.ts';
 import type { WanderlyEvent } from './events.ts';
 import { travelFaqs } from './travel-info.ts';
@@ -6,11 +6,27 @@ import { conciergeOpeningMessage } from './concierge-message.ts';
 import { deriveMemory } from './assistance-memory.ts';
 
 export function conciergePageDestination(pathname: string, search = '') {
+  if (pathname === '/booking') return bookingPageSelection(search)?.destination;
   const destinationSlug = pathname.startsWith('/destinations/') ? pathname.slice('/destinations/'.length) :
     pathname.startsWith('/packages/') ? getPackage(pathname.slice('/packages/'.length))?.slug :
     pathname === '/travel-info' ? new URLSearchParams(search).get('destination') ?? 'japan' :
     pathname === '/packages' ? new URLSearchParams(search).get('destination') : undefined;
   return getDestination(destinationSlug ?? '');
+}
+
+function bookingPageSelection(search: string) {
+  const params = new URLSearchParams(search);
+  const destination = params.getAll('destination');
+  const pack = params.getAll('package');
+  return getBookingSelection(destination.length === 1 ? destination[0] : undefined, pack.length === 1 ? pack[0] : undefined);
+}
+
+function bookingEventSelection(event: WanderlyEvent) {
+  if (event.page.split('?')[0] !== '/booking' || (event.eventType !== 'BOOKING_START' && event.eventType !== 'BOOKING_STEP')) return;
+  const pack = getPackage(event.entity ?? '');
+  if (pack) return getBookingSelection(pack.slug, pack.id);
+  const destination = getDestination(event.entity ?? '');
+  return destination ? getBookingSelection(destination.slug) : undefined;
 }
 
 type QuestionContext = Pick<ConciergeHandoff, 'brand' | 'intent' | 'entities' | 'topic'>;
@@ -82,24 +98,32 @@ export function manualConciergeSuggestion(events: WanderlyEvent[], pathname: str
   const pageDestination = conciergePageDestination(pathname, search);
   const pageStart = events.findLastIndex(event => event.eventType === 'PAGE_VIEW' && event.page.split('?')[0] === pathname);
   const visit = pageStart < 0 ? events : events.slice(pageStart + 1);
+  const pageBooking = pathname === '/booking' ? bookingPageSelection(search) : undefined;
+  if (pathname === '/booking' && !pageBooking) return;
+  const booking = pageBooking ? visit.map(bookingEventSelection).findLast(selection => !!selection) ?? pageBooking : undefined;
+  const selectedDestinations = [...new Set(shortlist)].map(getDestination).filter(destination => !!destination).slice(0, 3);
   const currentInfo = pathname === '/travel-info' ? visit.filter(event => !event.eventType.startsWith('ASSISTANCE_')).slice(-8).reverse() : recent;
   const selectedInfo = pathname === '/travel-info' ? currentInfo.find(event => (event.eventType === 'TRAVEL_INFO_VIEW' || event.eventType === 'FAQ_SEARCH') && event.page.split('?')[0] === pathname && eventDestination(event)) : undefined;
-  const destination = selectedInfo ? eventDestination(selectedInfo) : pageDestination ?? (pathname !== '/compare' ? recent.map(eventDestination).find(Boolean) : undefined);
+  const destination = booking?.destination ?? (selectedInfo ? eventDestination(selectedInfo) : pageDestination ?? (pathname !== '/compare' ? recent.map(eventDestination).find(Boolean) : undefined));
   const activity = currentInfo.find(event => {
-    if (event.eventType.startsWith('COMPARE_')) return pathname === '/compare' || !!destination;
+    if (event.eventType.startsWith('COMPARE_')) return pathname === '/compare' || selectedDestinations.length > 0;
     const known = eventDestination(event);
     return event.eventType !== 'DESTINATION_VIEW' && known && (!destination || known.slug === destination.slug);
   });
-  const intent: ConciergeHandoff['intent'] = pathname === '/compare' || activity?.eventType.startsWith('COMPARE_') ? 'DESTINATION_COMPARISON' :
+  const intent: ConciergeHandoff['intent'] = booking ? 'PACKAGE_SELECTION' : pathname === '/compare' || activity?.eventType.startsWith('COMPARE_') ? 'DESTINATION_COMPARISON' :
     activity?.eventType === 'PACKAGE_VIEW' || activity?.eventType === 'PRICE_VIEW' || pathname.startsWith('/packages') ? 'PACKAGE_SELECTION' : 'TRAVEL_INFORMATION';
-  const context = contextualQuestion({ brand: 'wanderly', intent, entities: [] }, [...currentInfo].reverse(), shortlist, destination?.slug);
+  const comparison = intent === 'DESTINATION_COMPARISON' && !pageDestination;
+  const context: QuestionContext = booking ? { brand: 'wanderly', intent, entities: booking.pack ? [booking.pack.packageName] : [] } :
+    comparison ? { brand: 'wanderly', intent, entities: selectedDestinations.map(destination => destination.name) } :
+    contextualQuestion({ brand: 'wanderly', intent, entities: [] }, [...currentInfo].reverse(), shortlist, destination?.slug);
+  const scopedDestination = comparison ? selectedDestinations.length === 1 ? selectedDestinations[0] : undefined : destination;
   const stay = activity?.eventType === 'HOTEL_VIEW' ? destination?.stayStyles.find(item => item.name === activity.entity) : undefined;
   if (stay) context.topic = `What should I check about the ${stay.name} stay style?`;
-  if (!destination && !context.entities.length) return;
   const { preferredPriority } = deriveMemory(events);
+  if (!scopedDestination && !context.entities.length && !preferredPriority) return;
   return {
-    initialMessage: conciergeOpeningMessage({ ...context, explicitPreferences: preferredPriority ? { priority: preferredPriority } : {} }, destination ? [destination.name] : []),
-    welcomeExamples: contextualWelcomeExamples(context, destination?.slug),
-    explanation: `${stay ? 'Based on the stay details you opened' : activity?.eventType === 'FAQ_SEARCH' ? 'Based on the practical question you opened' : intent === 'PACKAGE_SELECTION' ? 'Based on your recent package and price views' : intent === 'DESTINATION_COMPARISON' ? 'Based on your comparison activity' : 'Based on your recent browsing'}${destination ? ` for ${destination.name}` : ''}. Choose the suggestion in chat to send it; nothing is submitted automatically.`,
+    initialMessage: conciergeOpeningMessage({ ...context, explicitPreferences: preferredPriority ? { priority: preferredPriority } : {} }, scopedDestination ? [scopedDestination.name] : []),
+    welcomeExamples: contextualWelcomeExamples(context, scopedDestination?.slug),
+    explanation: `${booking ? 'Based on your current trip selection' : !scopedDestination && !context.entities.length && preferredPriority ? 'Based on the priority you explicitly chose' : stay ? 'Based on the stay details you opened' : activity?.eventType === 'FAQ_SEARCH' ? 'Based on the practical question you opened' : intent === 'PACKAGE_SELECTION' ? 'Based on your recent package and price views' : intent === 'DESTINATION_COMPARISON' ? 'Based on your comparison activity' : 'Based on your recent browsing'}${scopedDestination ? ` for ${scopedDestination.name}` : ''}. Choose the question if shown in chat, or copy it into your existing conversation; nothing is submitted automatically.`,
   };
 }

@@ -276,6 +276,18 @@ their updated examples appear on reopening. Nothing is automatically submitted.
 Catalog changes reach these examples when the site is rebuilt/deployed; this does
 not automatically update Adobe's external knowledge.
 
+Every manual launcher opening reads the current session again. Direct booking
+links use their approved destination/package, and form edits record only canonical
+destination/package selections for the current visit so reopening reflects the
+visible plan, including a cleared package. A new booking URL visit discards the
+previous visit's selection override. No departure dates, party details or free-form
+input are added to these prompts. On unscoped pages, recent comparison activity
+uses the current approved shortlist; an empty comparison does not resurrect old
+destinations. Explicitly chosen priorities remain available even without browsing
+history. A truly fresh session has no personalized choices to infer and therefore
+shows general catalog examples. For a submitted Adobe conversation, the updated
+question is shown in Wanderly's banner/copy control rather than resetting history.
+
 AAA consumes the canonical suppression policy rather than the legacy rules/AI
 comparison preview. Exposure is recorded exactly when a nudge is shown, not when
 chat opens; failed generation does not consume exposure. Opening is asynchronous
