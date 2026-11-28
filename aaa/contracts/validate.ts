@@ -6,10 +6,11 @@ import starterRequest from './v1/starter-request.schema.json' with { type: 'json
 import starterResult from './v1/starter-result.schema.json' with { type: 'json' };
 import contextualStarterResult from './contextual/starter-result.schema.json' with { type: 'json' };
 import contextualStarterResultV2 from './contextual/starter-result-2.schema.json' with { type: 'json' };
+import contextualStarterResultV3 from './contextual/starter-result-3.schema.json' with { type: 'json' };
 import momentRequest from './timing/moment-request-1.schema.json' with { type: 'json' };
 import momentResult from './timing/moment-result-1.schema.json' with { type: 'json' };
 import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from './types.ts';
-import type { ContextualStarterResultV1, ContextualStarterResultV2 } from './contextual/types.ts';
+import type { ContextualStarterResultV1, ContextualStarterResultV2, ContextualStarterResultV3 } from './contextual/types.ts';
 import type { MomentRequest, MomentResult } from './timing/types.ts';
 
 // Dependency-free validator for the JSON Schema 2020-12 subset used by the AAA v1 contracts.
@@ -28,6 +29,7 @@ export type ContractTypes = {
   StarterResult: StarterResult;
   ContextualStarterResult: ContextualStarterResultV1;
   ContextualStarterResultV2: ContextualStarterResultV2;
+  ContextualStarterResultV3: ContextualStarterResultV3;
   MomentRequest: MomentRequest;
   MomentResult: MomentResult;
 };
@@ -41,6 +43,7 @@ export const contractSchemas = {
   StarterResult: starterResult,
   ContextualStarterResult: contextualStarterResult,
   ContextualStarterResultV2: contextualStarterResultV2,
+  ContextualStarterResultV3: contextualStarterResultV3,
   MomentRequest: momentRequest,
   MomentResult: momentResult,
 } as const satisfies Record<ContractName, { $id: string }>;

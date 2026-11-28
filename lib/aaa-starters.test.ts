@@ -61,6 +61,33 @@ test('v2 contextual responses preserve bounded brief and explanation while rejec
   assert.deepEqual(response.rationale, envelope.rationale);
 });
 
+test('v3 accepts written helpful starters while v2 still rejects written provenance', async () => {
+  const result = structuredClone(travelResult);
+  result.starters[0].text = 'How do Bali and Maldives compare for a quieter trip?';
+  const envelope = {
+    schemaVersion: 'aaa-contextual-starters-3',
+    result,
+    starterProvenance: result.starters.map((starter, index) => ({ starterId: starter.starterId, source: index === 0 ? 'written' : 'approved' })),
+    visitorBrief: { text: 'Comparing destinations.', slots: { stage: 'comparing', entityIds: [], priorities: [], openQuestions: [] }, source: 'rendered' },
+    why: { text: 'You compared destinations.', factIds: ['compared:bali+maldives'] },
+    rationale: ['signal.back_and_forth'],
+  };
+  assert.ok(validateContextualStarters(envelope));
+  assert.equal(validateContextualStarters({ ...envelope, schemaVersion: 'aaa-contextual-starters-2' }), undefined);
+  assert.equal(validateContextualStarters({ ...envelope, starterProvenance: [] }), undefined);
+  assert.equal(validateContextualStarters({ ...envelope, starterProvenance: [...envelope.starterProvenance].reverse() }), undefined);
+  assert.equal(validateContextualStarters({ ...envelope, starterProvenance: [{ starterId: result.starters[0].starterId, source: 'unknown' }] }), undefined);
+  const response = await generateContextualStarters(travelRequest, travelProfile, {
+    endpoint: 'http://localhost/aaa/starters', now: () => now,
+    fetchImpl: async () => Response.json(envelope),
+  });
+  assert.deepEqual(response.result, result);
+  assert.deepEqual(response.starterProvenance, envelope.starterProvenance);
+  assert.deepEqual(response.visitorBrief, envelope.visitorBrief);
+  assert.deepEqual(response.why, envelope.why);
+  assert.deepEqual(response.rationale, envelope.rationale);
+});
+
 test('unreachable service returns only approved templates without padding', async () => {
   const response = await generateStarters(travelRequest, travelProfile, {
     endpoint: 'http://localhost/aaa/starters', now: () => now,

@@ -4,6 +4,7 @@ import { consideredReasons, decisionDetails, explainReason, provenanceLabel } fr
 
 test('explain labels do not invent a source or expose unrecognized codes', () => {
   assert.equal(provenanceLabel('generated'), 'Chosen by the agent · passed checks');
+  assert.equal(provenanceLabel('written'), 'Written by the agent · passed checks');
   assert.equal(provenanceLabel('approved'), 'Approved example');
   assert.equal(provenanceLabel('other'), 'Source not recorded');
   assert.equal(explainReason('model.disabled'), 'Model switched off (templates only)');

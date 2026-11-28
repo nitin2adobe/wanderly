@@ -13,6 +13,7 @@ import { visitorBriefIsFresh, visitorBriefStore } from '@/lib/aaa-visitor-brief'
 import { COMPARISON_SNAPSHOT_REQUEST, comparisonRequest, type ComparisonSnapshot } from '@/lib/aaa-comparison';
 import { readAmbientPage } from '@/lib/ambient-context';
 import { nudgeWhy } from '@/lib/aaa-nudge-copy';
+import { provenanceLabel } from '@/lib/aaa-explain-labels';
 import { comparisonContext, comparisonSummary, validateComparisonStarter } from '@/sites/wanderly/comparison';
 import { createDecisionPoints, isRevisit, type DecisionPoint } from '@/lib/aaa-decision-points';
 import { createTimingController } from '@/lib/aaa-timing';
@@ -342,6 +343,8 @@ export default function ConciergePlugin({
     }}>
       <h3 id="aaa-nudge-title">{nudge.response.headline?.text ?? 'A little help choosing?'}</h3>
       <p>{primary.text}</p>
+      {nudge.response.starterProvenance?.find(entry => entry.starterId === primary.starterId)?.source === 'written'
+        && <small className="agentEyeBadge">{provenanceLabel('written')}</small>}
       <details className="conciergeWhy">
         <summary>Why am I seeing this?</summary>
         <p>{nudgeWhy(nudge.response.why?.text)}</p>

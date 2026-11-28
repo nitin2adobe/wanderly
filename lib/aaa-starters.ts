@@ -209,9 +209,9 @@ export async function generateContextualStarters(request: StarterRequest, profil
       schemaVersion: contextual.schemaVersion, result: contextual.result, starterProvenance: contextual.starterProvenance,
       ...(contextual.headline ? { headline: contextual.headline } : {}),
       ...(contextual.schemaVersion === 'aaa-contextual-starters-1' && contextual.intentSummary ? { intentSummary: contextual.intentSummary } : {}),
-      ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.visitorBrief ? { visitorBrief: contextual.visitorBrief } : {}),
-      ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.why ? { why: contextual.why } : {}),
-      ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.rationale ? { rationale: contextual.rationale } : {}),
+      ...(contextual.schemaVersion !== 'aaa-contextual-starters-1' && contextual.visitorBrief ? { visitorBrief: contextual.visitorBrief } : {}),
+      ...(contextual.schemaVersion !== 'aaa-contextual-starters-1' && contextual.why ? { why: contextual.why } : {}),
+      ...(contextual.schemaVersion !== 'aaa-contextual-starters-1' && contextual.rationale ? { rationale: contextual.rationale } : {}),
       trace, ...(traceId ? { traceId } : {}),
     };
   } catch (error) {

@@ -301,6 +301,10 @@ brief. `/demo/compare` compares Concierge alone, local approved templates, and
 AAA on the same eligible journey. Its ambient block is a preview copied from
 the tenant template, not proof of delivery. Both pages label the grounding
 scoreboard as scripted; live review and latency remain pending.
+Contextual starter envelopes v2 and v3 are supported; v3 can label a helpful
+question as written by the agent after service checks. The draft
+`sites/wanderly/vocabulary.json` requires review before written starters are
+enabled. Existing templates and commercial starters are unchanged.
 
 The demo now has five scenarios: **Right moment** (Bali/Maldives comparison),
 **Choose a package** (Island Rhythm/Bali Slow Living), **Practical travel

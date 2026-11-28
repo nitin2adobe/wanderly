@@ -98,7 +98,7 @@ export function createActivationController(provider: ActivationProvider, fetchIm
             if (!body || typeof body !== 'object' || !('result' in body)) throw new Error('service.invalid_result');
             const result = validateContract('StarterResult', body.result);
             if (!result.valid) throw new Error('service.invalid_result');
-            const contextual = 'schemaVersion' in body && (body.schemaVersion === 'aaa-contextual-starters-1' || body.schemaVersion === 'aaa-contextual-starters-2')
+            const contextual = 'schemaVersion' in body && (body.schemaVersion === 'aaa-contextual-starters-1' || body.schemaVersion === 'aaa-contextual-starters-2' || body.schemaVersion === 'aaa-contextual-starters-3')
               ? validateContextualStarters({
                 schemaVersion: body.schemaVersion, result: body.result,
                 ...('starterProvenance' in body ? { starterProvenance: body.starterProvenance } : {}),
@@ -119,9 +119,9 @@ export function createActivationController(provider: ActivationProvider, fetchIm
                 schemaVersion: contextual.schemaVersion, starterProvenance: contextual.starterProvenance,
                 ...(contextual.headline ? { headline: contextual.headline } : {}),
                 ...(contextual.schemaVersion === 'aaa-contextual-starters-1' && contextual.intentSummary ? { intentSummary: contextual.intentSummary } : {}),
-                ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.visitorBrief ? { visitorBrief: contextual.visitorBrief } : {}),
-                ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.why ? { why: contextual.why } : {}),
-                ...(contextual.schemaVersion === 'aaa-contextual-starters-2' && contextual.rationale ? { rationale: contextual.rationale } : {}),
+                ...(contextual.schemaVersion !== 'aaa-contextual-starters-1' && contextual.visitorBrief ? { visitorBrief: contextual.visitorBrief } : {}),
+                ...(contextual.schemaVersion !== 'aaa-contextual-starters-1' && contextual.why ? { why: contextual.why } : {}),
+                ...(contextual.schemaVersion !== 'aaa-contextual-starters-1' && contextual.rationale ? { rationale: contextual.rationale } : {}),
               } : {}),
               ...(typeof traceId === 'string' && /^[a-f0-9]{32}$/.test(traceId) ? { traceId } : {}),
             };

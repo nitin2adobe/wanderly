@@ -185,16 +185,40 @@ test('v2 contextual brief and explanation survive activation', async () => {
   assert.deepEqual(prepared?.response.rationale, ['signal.back_and_forth']);
 });
 
-test('a fresh contextual activation passes exact starters to chat and a fresh brief to outgoing XDM', async () => {
+test('v3 written question and provenance survive activation unchanged', async () => {
+  const f = fixture();
+  const visitorBrief = { text: 'Comparing destinations.', slots: { stage: 'comparing', entityIds: [], priorities: [], openQuestions: [] }, source: 'rendered' };
+  const why = { text: 'You compared destinations.', factIds: ['compared:bali+maldives'] };
+  const question = 'How do Bali and Maldives compare for a quieter trip?';
+  const controller = createActivationController(f.provider, async (_url, init) => {
+    const request = JSON.parse(String(init?.body)) as StarterRequest;
+    const response = templateStarters(request, travelProfile, 'service.unavailable');
+    response.result.starters[0].text = question;
+    return Response.json({
+      ...response, schemaVersion: 'aaa-contextual-starters-3',
+      starterProvenance: response.result.starters.map(starter => ({ starterId: starter.starterId, source: 'written' })),
+      visitorBrief, why, rationale: ['signal.back_and_forth'],
+    });
+  });
+  const prepared = await controller.prepare();
+  assert.equal(prepared?.response.result.starters[0].text, question);
+  assert.equal(prepared?.response.starterProvenance?.[0].source, 'written');
+  assert.deepEqual(prepared?.response.visitorBrief, visitorBrief);
+  assert.deepEqual(prepared?.response.why, why);
+  assert.deepEqual(prepared?.response.rationale, ['signal.back_and_forth']);
+});
+
+test('a fresh written activation passes exact starters to chat and a fresh brief to outgoing XDM', async () => {
   const f = fixture();
   const controller = createActivationController(f.provider, async (_url, init) => {
     const request = JSON.parse(String(init?.body)) as StarterRequest;
     const response = templateStarters(request, travelProfile, 'service.unavailable');
     response.result.starters[0].text = 'Compare these two trips in my own terms?';
     return Response.json({
-      ...response, schemaVersion: 'aaa-contextual-starters-1',
-      starterProvenance: response.result.starters.map(starter => ({ starterId: starter.starterId, source: 'generated' })),
-      headline: { text: 'Choosing between trips?', source: 'generated' }, intentSummary: 'Comparing destinations',
+      ...response, schemaVersion: 'aaa-contextual-starters-3',
+      starterProvenance: response.result.starters.map(starter => ({ starterId: starter.starterId, source: 'written' })),
+      headline: { text: 'Choosing between trips?', source: 'generated' },
+      visitorBrief: { text: 'Comparing destinations', slots: { stage: 'comparing', entityIds: [], priorities: [], openQuestions: [] }, source: 'rendered' },
     });
   });
   const nudge = (await controller.prepare())!;

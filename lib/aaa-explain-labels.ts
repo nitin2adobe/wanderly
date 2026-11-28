@@ -39,7 +39,8 @@ export function consideredReasons(item: Record<string, unknown>): string[] {
 }
 
 export const friendlyExplainId = (id: string) => id.replace(/[-_.]+/g, ' ').replace(/^./, c => c.toUpperCase());
-export const provenanceLabel = (source: string) => source === 'generated'
+export const provenanceLabel = (source: string) => source === 'written'
+  ? 'Written by the agent · passed checks' : source === 'generated'
   ? 'Chosen by the agent · passed checks' : source === 'approved' ? 'Approved example' : 'Source not recorded';
 
 const rationaleLabels: Record<string, string> = {

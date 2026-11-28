@@ -18,6 +18,10 @@ The additive [timing contracts](timing/) and examples are vendored from AAA revi
 `e3edebfde7ef0ddb8e842f12f6f8e4d19577baa1`. They wrap the unchanged v1 starter
 request and carry only structured decisions and reason codes.
 
+The separately versioned contextual starter envelope v3 adds `written` starter
+provenance; v1 and v2 remain supported. The v3 schema and Wanderly vocabulary
+are copies of the service-owned files, not site-authored policy.
+
 ## Conventions
 
 - **schemaVersion** is required on every contract and is `1.0.0` in v1. Additive, backward-compatible changes bump the minor version. Breaking changes create `v2/` with new `$id`s (`urn:aaa:contracts:v<N>:<name>`).

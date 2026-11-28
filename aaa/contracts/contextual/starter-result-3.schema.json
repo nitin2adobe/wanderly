@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:contextual:starter-result:3",
+  "title": "Contextual StarterResult envelope v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "result", "starterProvenance"],
+  "properties": {
+    "schemaVersion": { "const": "aaa-contextual-starters-3" },
+    "result": { "$ref": "urn:aaa:contracts:v1:starter-result" },
+    "starterProvenance": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["starterId", "source"],
+        "properties": {
+          "starterId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+          "source": { "enum": ["generated", "approved", "written"] }
+        }
+      }
+    },
+    "headline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "source"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "source": { "enum": ["generated", "approved"] }
+      }
+    },
+    "visitorBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "slots", "source"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "source": { "enum": ["generated", "rendered"] },
+        "slots": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stage", "entityIds", "priorities", "openQuestions"],
+          "properties": {
+            "stage": { "enum": ["exploring", "comparing", "deciding", "transacting"] },
+            "entityIds": { "$ref": "#/$defs/identifiers" },
+            "priorities": { "$ref": "#/$defs/identifiers" },
+            "openQuestions": { "$ref": "#/$defs/identifiers" }
+          }
+        }
+      }
+    },
+    "why": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "factIds"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "factIds": { "$ref": "#/$defs/factIds" }
+      }
+    },
+    "rationale": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["signal.back_and_forth", "signal.price_focus", "signal.info_seeking",
+                 "facet.explicit", "tool.evidence_changed_choice"]
+      }
+    }
+  },
+  "$defs": {
+    "identifiers": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 }
+    },
+    "factIds": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 260 }
+    }
+  }
+}

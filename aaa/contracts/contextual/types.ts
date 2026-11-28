@@ -25,4 +25,9 @@ export type ContextualStarterResultV2 = Omit<ContextualStarterResultV1, 'schemaV
     | 'facet.explicit' | 'tool.evidence_changed_choice')[];
 };
 
-export type ContextualStarterResult = ContextualStarterResultV1 | ContextualStarterResultV2;
+export type ContextualStarterResultV3 = Omit<ContextualStarterResultV2, 'schemaVersion' | 'starterProvenance'> & {
+  schemaVersion: 'aaa-contextual-starters-3';
+  starterProvenance: { starterId: string; source: 'written' | 'generated' | 'approved' }[];
+};
+
+export type ContextualStarterResult = ContextualStarterResultV1 | ContextualStarterResultV2 | ContextualStarterResultV3;

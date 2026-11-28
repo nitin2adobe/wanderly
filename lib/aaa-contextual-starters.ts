@@ -13,20 +13,23 @@ export function validContextualText(value: unknown, limit: number): value is str
 
 export function validateContextualStarters(value: unknown): ContextualStarters | undefined {
   if (!isRecord(value) || (value.schemaVersion !== 'aaa-contextual-starters-1'
-    && value.schemaVersion !== 'aaa-contextual-starters-2')) return;
+    && value.schemaVersion !== 'aaa-contextual-starters-2'
+    && value.schemaVersion !== 'aaa-contextual-starters-3')) return;
   const result = validateContract('StarterResult', value.result);
   if (!result.valid || result.value.starters.some(starter => !validContextualText(starter.text, 200))
     || !Array.isArray(value.starterProvenance)) return;
   const cleaned = { ...value };
   if (!isRecord(value.headline) || !validContextualText(value.headline.text, 120) || !source(value.headline.source)) delete cleaned.headline;
   if (value.schemaVersion === 'aaa-contextual-starters-1' && !validContextualText(value.intentSummary, 200)) delete cleaned.intentSummary;
-  if (value.schemaVersion === 'aaa-contextual-starters-2') {
+  if (value.schemaVersion !== 'aaa-contextual-starters-1') {
     if (value.visitorBrief !== undefined && (!isRecord(value.visitorBrief) || !validContextualText(value.visitorBrief.text, 400))) delete cleaned.visitorBrief;
     if (value.why !== undefined && (!isRecord(value.why) || !validContextualText(value.why.text, 160))) delete cleaned.why;
   }
   const validated = value.schemaVersion === 'aaa-contextual-starters-1'
     ? validateContract('ContextualStarterResult', cleaned)
-    : validateContract('ContextualStarterResultV2', cleaned);
+    : value.schemaVersion === 'aaa-contextual-starters-2'
+      ? validateContract('ContextualStarterResultV2', cleaned)
+      : validateContract('ContextualStarterResultV3', cleaned);
   if (!validated.valid || validated.value.starterProvenance.length !== result.value.starters.length
     || new Set(result.value.starters.map(starter => starter.starterId)).size !== result.value.starters.length
     || validated.value.starterProvenance.some((entry, index) => entry.starterId !== result.value.starters[index].starterId)) return;
