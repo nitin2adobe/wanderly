@@ -253,9 +253,9 @@ test('validator requires exactly one matching oneOf alternative', () => {
 test('validator refuses schemas that use unsupported keywords', () => {
   const schemas = contractSchemas as unknown as Record<string, Record<string, unknown>>;
   const original = schemas.StarterRequest.properties;
-  schemas.StarterRequest.properties = { ...(original as object), requestId: { maximum: 1 } };
+  schemas.StarterRequest.properties = { ...(original as object), requestId: { multipleOf: 1 } };
   try {
-    assert.throws(() => validateContract('StarterRequest', travelRequest), /Unsupported schema keyword "maximum"/);
+    assert.throws(() => validateContract('StarterRequest', travelRequest), /Unsupported schema keyword "multipleOf"/);
   } finally {
     schemas.StarterRequest.properties = original;
   }

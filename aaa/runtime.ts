@@ -157,6 +157,7 @@ export function createJourneyRuntime(options: {
   return {
     setPage, revise, getJourney,
     getPage: () => ensure() && page ? { ...page } : undefined,
+    getExposureCount: () => ensure() ? exposure.count : undefined,
     getMoment: () => { const journey = getJourney(); return journey && active ? matchMoment(active.profile, journey) : undefined; },
     ingest, track: (name: string, payload?: Record<string, unknown>) => ingest('track', name, payload),
     evaluate,

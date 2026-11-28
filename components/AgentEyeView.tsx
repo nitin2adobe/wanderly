@@ -4,17 +4,41 @@ import { useEffect, useState } from 'react';
 import { AAA_TRACE_CHANGED, acceptFrameActivationTrace, getActivationTraces } from '@/lib/aaa-activation';
 import { consideredReasons, decisionDetails, explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
 import GroundingScoreboard from '@/components/GroundingScoreboard';
+import { AAA_TIMING_CHANGED, acceptFrameTimingEntry, timingTimeline, type TimingEntry } from '@/lib/aaa-timing';
+import { timingOutcomeLabel, timingPointLabel, timingReasonLabels } from '@/lib/aaa-timing-labels';
 
 type RecordValue = Record<string, unknown>;
 const object = (value: unknown): RecordValue => value && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : {};
 const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
 const text = (value: unknown): string => typeof value === 'string' ? value : '';
 const names = (values: unknown[]) => values.filter((value): value is string => typeof value === 'string').join(', ');
+const elapsed = (entry: TimingEntry) => {
+  const seconds = Math.max(0, Math.floor((entry.at - entry.startedAt) / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+};
+const pageLabel = (entry: TimingEntry) => {
+  if (entry.pageType === 'comparison') return 'Compare';
+  return entry.entityNames[0] ?? ({
+    home: 'Home', 'destination-list': 'Destinations', 'destination-detail': 'Destination',
+    'package-list': 'Packages', 'package-detail': 'Package', 'practical-info': 'Travel information',
+    booking: 'Booking',
+  }[entry.pageType] ?? 'Page');
+};
 
 export default function AgentEyeView({ sessionId }: { sessionId: string }) {
   const [traceId, setTraceId] = useState<string>();
   const [data, setData] = useState<RecordValue>();
   const [status, setStatus] = useState('Waiting for an eligible journey.');
+  const [timingEntries, setTimingEntries] = useState<readonly TimingEntry[]>([]);
+  useEffect(() => {
+    const sync = (event?: Event) => {
+      if (event && 'detail' in event) acceptFrameTimingEntry(event.detail);
+      setTimingEntries([...timingTimeline(sessionId)]);
+    };
+    sync();
+    window.addEventListener(AAA_TIMING_CHANGED, sync);
+    return () => window.removeEventListener(AAA_TIMING_CHANGED, sync);
+  }, [sessionId]);
   useEffect(() => {
     const sync = (event?: Event) => {
       if (event && 'detail' in event) acceptFrameActivationTrace(event.detail);
@@ -63,6 +87,29 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
   return <section className="agentEye panel" aria-labelledby="agent-eye-title">
     <h2 id="agent-eye-title">The agent’s view</h2>
     <p className="muted">A visitor-safe record of this decision, not a model transcript.</p>
+    {process.env.NEXT_PUBLIC_AAA_TIMING === 'agent' && <section aria-labelledby="timing-title">
+      <h3 id="timing-title">When to step in</h3>
+      {timingEntries.length === 0 ? <p>No timing decisions yet.</p> : <>
+        <ol className="timingTimeline" aria-live="polite">
+          {timingEntries.map(entry => <li key={`${entry.point.pageInstanceId}-${entry.point.sequence}`}>
+            <span>{elapsed(entry)} · {entry.point.kind === 'revisit'
+              ? `Back to ${pageLabel(entry)}` : `${pageLabel(entry)} · ${timingPointLabel(entry.point.kind)}`}</span>
+            <p><strong>{timingOutcomeLabel(entry.source, entry.outcome, entry.reasonCodes)}</strong>
+              {entry.source === 'agent' && timingReasonLabels(entry.reasonCodes, entry.entityNames).map(reason => <span key={reason}> · {reason}</span>)}
+            </p>
+            {(entry.judgments || entry.confidence) && <details>
+              <summary>Technical details</summary>
+              {entry.judgments && <p>Self-reported judgments: welcome now {entry.judgments.welcomeNow}; making progress {entry.judgments.makingProgress}; stuck {entry.judgments.stuck}.</p>}
+              {entry.confidence && <p>Self-reported confidence: {entry.confidence}.</p>}
+            </details>}
+          </li>)}
+        </ol>
+        {(() => {
+          const first = timingEntries.find(entry => entry.rulesWouldAssist);
+          return first && <p className="muted">Rules would have stepped in at {elapsed(first)} on the {pageLabel(first)} page.</p>;
+        })()}
+      </>}
+    </section>}
     <GroundingScoreboard />
     <div aria-live="polite">
       {status && <p role="status">{status}</p>}

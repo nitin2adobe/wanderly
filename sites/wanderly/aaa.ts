@@ -87,6 +87,7 @@ export function trackPackagePace(value: string) {
 }
 
 export function getCanonicalJourney() { if (typeof window !== 'undefined') navigate(); return getRuntime()?.getJourney(); }
+export function getNudgeExposureCount() { return getRuntime()?.getExposureCount(); }
 export function getCurrentPage() { if (typeof window !== 'undefined') navigate(); return getRuntime()?.getPage(); }
 export function getCurrentMoment() { if (typeof window !== 'undefined') navigate(); return getRuntime()?.getMoment(); }
 export function subscribeAaa(listener: () => void): () => void {

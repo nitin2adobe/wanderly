@@ -8,12 +8,17 @@ import { EVENT_UPDATED } from '@/lib/events';
 import { getAaaRuntime } from '@/lib/aaa-runtime';
 import { track } from '@/lib/tracking';
 import { wanderlyActivation } from '@/sites/wanderly/activation';
-import { getCanonicalJourney, getCurrentMoment, evaluateCurrentSuppression, getComparisonSelection, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
+import { getCanonicalJourney, getCurrentMoment, evaluateCurrentSuppression, getComparisonSelection, getNudgeExposureCount, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
 import { visitorBriefIsFresh, visitorBriefStore } from '@/lib/aaa-visitor-brief';
 import { COMPARISON_SNAPSHOT_REQUEST, comparisonRequest, type ComparisonSnapshot } from '@/lib/aaa-comparison';
 import { readAmbientPage } from '@/lib/ambient-context';
 import { nudgeWhy } from '@/lib/aaa-nudge-copy';
 import { comparisonContext, comparisonSummary, validateComparisonStarter } from '@/sites/wanderly/comparison';
+import { createDecisionPoints, isRevisit, type DecisionPoint } from '@/lib/aaa-decision-points';
+import { createTimingController } from '@/lib/aaa-timing';
+import { readTimingSequence, saveTimingSequence } from '@/lib/aaa-timing-budget';
+
+const agentTiming = process.env.NEXT_PUBLIC_AAA_TIMING === 'agent';
 
 export default function ConciergePlugin({
   connector = adobeConnector, provider = wanderlyActivation, catalogVersion,
@@ -21,6 +26,7 @@ export default function ConciergePlugin({
   const aaa = useAaaAvailability();
   const pathname = usePathname();
   const controller = useMemo(() => createActivationController(provider), [provider]);
+  const timing = useMemo(() => createTimingController(provider), [provider]);
   const [nudge, setNudge] = useState<PreparedNudge>();
   const [opening, setOpening] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -30,6 +36,7 @@ export default function ConciergePlugin({
   const balloon = useRef<HTMLElement>(null);
   const attempted = useRef('');
   const exposed = useRef<PreparedNudge | undefined>(undefined);
+  const attemptPrepareRef = useRef<() => Promise<void>>(async () => {});
   current.current = nudge;
 
   useEffect(() => {
@@ -94,6 +101,38 @@ export default function ConciergePlugin({
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const attemptPrepare = async () => {
+      try { await provider.refresh?.(); }
+      catch (error) { console.error('[aaa-activation] settings.refresh_failed', error); return; }
+      if (!active || current.current || openingRef.current) return;
+      const snapshot = provider.read(false);
+      if (!snapshot?.allowed || !connector.supportsBrand(snapshot.profile.profileId)) return;
+      const key = JSON.stringify([snapshot.journey.sessionId, snapshot.journey.profileVersion, snapshot.journey.page, snapshot.journey.lastSeq, snapshot.momentRuleId]);
+      if (attempted.current === key) return;
+      attempted.current = key;
+      const prepared = await controller.prepare();
+      if (!active || !prepared || current.current || openingRef.current || !controller.isFresh(prepared, false)) return;
+      const result = validateComparisonStarter(prepared.response.result, comparisonContext(
+        prepared.request.journey, snapshot.profile, getComparisonSelection() ?? [],
+      ));
+      if (!result) return;
+      const named = { ...prepared, response: { ...prepared.response, result } };
+      if (named.response.visitorBrief) {
+        const identity = named.request.journey;
+        visitorBriefStore.set(named.response.visitorBrief.text, () => {
+          const availability = getAaaRuntime().get();
+          const journey = getCanonicalJourney();
+          return availability.enabled && !!journey
+            && journey.profileId === availability.active.profile.profileId
+            && journey.profileVersion === availability.active.profile.profileVersion
+            && visitorBriefIsFresh(identity, named.response.result.expiresAt, journey);
+        });
+      }
+      current.current = named;
+      setNudge(named);
+      setFailed(false);
+    };
+    attemptPrepareRef.current = attemptPrepare;
     const schedule = () => {
       if (!aaa.enabled || isHiddenConciergeRoute(window.location.pathname) || document.visibilityState === 'hidden') {
         clearTimeout(timer);
@@ -112,38 +151,11 @@ export default function ConciergePlugin({
         return;
       }
       if (openingRef.current || !connector.openStarters) return;
+      if (agentTiming) return;
       if (timer) return;
-      timer = setTimeout(async () => {
+      timer = setTimeout(() => {
         timer = undefined;
-        try { await provider.refresh?.(); }
-        catch (error) { console.error('[aaa-activation] settings.refresh_failed', error); return; }
-        if (!active || current.current || openingRef.current) return;
-        const snapshot = provider.read(false);
-        if (!snapshot?.allowed || !connector.supportsBrand(snapshot.profile.profileId)) return;
-        const key = JSON.stringify([snapshot.journey.sessionId, snapshot.journey.profileVersion, snapshot.journey.page, snapshot.journey.lastSeq, snapshot.momentRuleId]);
-        if (attempted.current === key) return;
-        attempted.current = key;
-        const prepared = await controller.prepare();
-        if (!active || !prepared || current.current || openingRef.current || !controller.isFresh(prepared, false)) return;
-        const result = validateComparisonStarter(prepared.response.result, comparisonContext(
-          prepared.request.journey, snapshot.profile, getComparisonSelection() ?? [],
-        ));
-        if (!result) return;
-        const named = { ...prepared, response: { ...prepared.response, result } };
-        if (named.response.visitorBrief) {
-          const identity = named.request.journey;
-          visitorBriefStore.set(named.response.visitorBrief.text, () => {
-            const availability = getAaaRuntime().get();
-            const journey = getCanonicalJourney();
-            return availability.enabled && !!journey
-              && journey.profileId === availability.active.profile.profileId
-              && journey.profileVersion === availability.active.profile.profileVersion
-              && visitorBriefIsFresh(identity, named.response.result.expiresAt, journey);
-          });
-        }
-        current.current = named;
-        setNudge(named);
-        setFailed(false);
+        void attemptPrepare();
       }, 1200);
     };
     const close = () => schedule();
@@ -174,6 +186,99 @@ export default function ConciergePlugin({
       window.removeEventListener(NUDGE_SETTINGS_CHANGED, settingsChanged);
     };
   }, [aaa.enabled, pathname, provider, connector, controller]);
+
+  useEffect(() => {
+    if (!agentTiming || !aaa.enabled) return;
+    let storage: Storage;
+    try { storage = window.sessionStorage; }
+    catch {
+      console.warn('[aaa-timing] budget.storage_unavailable');
+      return;
+    }
+    let active = true, syncing = false, preparing = false, session = '', page = '', lastSeq = 0;
+    let scheduler: ReturnType<typeof createDecisionPoints> | undefined;
+    const unavailable = () => isHiddenConciergeRoute(window.location.pathname)
+      || document.visibilityState === 'hidden' || !!current.current || openingRef.current || preparing
+      || !!document.querySelector('button[aria-label="Close Wanderly chat"]') || !connector.openStarters;
+    const sync = () => {
+      if (!active || syncing) return;
+      syncing = true;
+      try {
+        const journey = getCanonicalJourney();
+        if (!journey) { scheduler?.pause(); return; }
+        if (journey.sessionId !== session) {
+          scheduler?.stop();
+          session = journey.sessionId; page = ''; lastSeq = 0;
+          const initialSequence = readTimingSequence(storage, session);
+          if (initialSequence === undefined) {
+            scheduler = undefined;
+            console.warn('[aaa-timing] budget.storage_unavailable');
+            return;
+          }
+          scheduler = createDecisionPoints({
+            now: Date.now, setTimer: (fn, ms) => setTimeout(fn, ms),
+            clearTimer: timer => clearTimeout(timer as ReturnType<typeof setTimeout>),
+            initialSequence,
+            onPoint: point => {
+              if (!saveTimingSequence(storage, session, point.sequence)) {
+                console.warn('[aaa-timing] budget.storage_unavailable');
+                scheduler?.stop();
+                return;
+              }
+              void onPoint(point);
+            },
+          });
+        }
+        if (!scheduler) return;
+        scheduler!.visible(document.visibilityState !== 'hidden');
+        if (unavailable()) scheduler!.pause(); else scheduler!.resume();
+        if (journey.page.pageInstanceId !== page) {
+          page = journey.page.pageInstanceId; lastSeq = journey.lastSeq;
+          scheduler!.pageViewed(page, isRevisit(journey));
+        } else if (journey.lastSeq > lastSeq) {
+          lastSeq = journey.lastSeq;
+          scheduler!.activity(page, isRevisit(journey));
+        }
+      } finally { syncing = false; }
+    };
+    const onPoint = async (point: DecisionPoint) => {
+      if (!active || unavailable()) return;
+      try { await provider.refresh?.(); }
+      catch (error) { console.error('[aaa-activation] settings.refresh_failed', error); return; }
+      if (!active || unavailable()) return;
+      const count = getNudgeExposureCount();
+      if (count === undefined) return;
+      const entry = await timing.decide(point, count);
+      if (!active || !entry || unavailable() || provider.read(false)?.journey.page.pageInstanceId !== point.pageInstanceId) return;
+      if (entry.outcome === 'silent' && entry.judgments?.makingProgress === 'yes') scheduler?.standDown(point.pageInstanceId);
+      if (entry.outcome !== 'assist') return;
+      preparing = true;
+      scheduler?.pause();
+      try { await attemptPrepareRef.current(); }
+      finally { preparing = false; sync(); }
+    };
+    sync();
+    window.addEventListener(EVENT_UPDATED, sync);
+    window.addEventListener('aaa:changed', sync);
+    window.addEventListener('focusin', sync);
+    window.addEventListener('focusout', sync);
+    window.addEventListener(CONCIERGE_CLOSE_EVENT, sync);
+    document.addEventListener('visibilitychange', sync);
+    const unsubscribe = getAaaRuntime().subscribe(sync);
+    const interval = setInterval(sync, 2000);
+    return () => {
+      active = false;
+      scheduler?.stop();
+      clearInterval(interval);
+      unsubscribe();
+      window.removeEventListener(EVENT_UPDATED, sync);
+      window.removeEventListener('aaa:changed', sync);
+      window.removeEventListener('focusin', sync);
+      window.removeEventListener('focusout', sync);
+      window.removeEventListener(CONCIERGE_CLOSE_EVENT, sync);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [aaa.enabled, provider, connector, timing]);
 
   const accept = async () => {
     const prepared = current.current;

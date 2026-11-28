@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "aaa-moment-request-1",
+  "request": {
+    "schemaVersion": "1.0.0",
+    "requestId": "request-demo",
+    "requestedAt": "2026-11-25T10:00:01Z",
+    "momentRuleId": "package-help",
+    "journey": {
+      "schemaVersion": "1.0.0",
+      "sessionId": "session-demo",
+      "profileId": "wanderly",
+      "profileVersion": "1.0.0",
+      "locale": "en-US",
+      "updatedAt": "2026-11-25T10:00:00Z",
+      "lastSeq": 1,
+      "page": {
+        "pageInstanceId": "page-demo",
+        "pageRevision": 0,
+        "pageType": "package-detail"
+      },
+      "raw": {
+        "signals": [
+          {
+            "schemaVersion": "1.0.0",
+            "signalId": "sig-1",
+            "kind": "entity.viewed",
+            "sessionId": "session-demo",
+            "seq": 1,
+            "ts": "2026-11-25T10:00:00Z",
+            "profileId": "wanderly",
+            "profileVersion": "1.0.0",
+            "pageInstanceId": "page-demo",
+            "pageRevision": 0,
+            "pageType": "package-detail",
+            "locale": "en-US",
+            "entityIds": [
+              "pkg-demo"
+            ],
+            "provenance": "explicit",
+            "source": "track",
+            "attributes": {
+              "entityType": "package"
+            }
+          }
+        ]
+      },
+      "facets": [],
+      "derived": {
+        "hesitation": {
+          "status": "uncertain",
+          "provenance": "inferred",
+          "basisSignalIds": []
+        },
+        "inProgress": {
+          "status": "inactive",
+          "provenance": "inferred",
+          "basisSignalIds": []
+        }
+      }
+    }
+  },
+  "decisionPoint": {
+    "kind": "page_settled",
+    "sequence": 1,
+    "pageSequence": 1
+  },
+  "exposure": {
+    "shownThisSession": 0
+  }
+}

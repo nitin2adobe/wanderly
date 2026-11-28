@@ -6,8 +6,11 @@ import starterRequest from './v1/starter-request.schema.json' with { type: 'json
 import starterResult from './v1/starter-result.schema.json' with { type: 'json' };
 import contextualStarterResult from './contextual/starter-result.schema.json' with { type: 'json' };
 import contextualStarterResultV2 from './contextual/starter-result-2.schema.json' with { type: 'json' };
+import momentRequest from './timing/moment-request-1.schema.json' with { type: 'json' };
+import momentResult from './timing/moment-result-1.schema.json' with { type: 'json' };
 import type { CanonicalSignal, JourneyState, SiteProfile, StarterRequest, StarterResult } from './types.ts';
 import type { ContextualStarterResultV1, ContextualStarterResultV2 } from './contextual/types.ts';
+import type { MomentRequest, MomentResult } from './timing/types.ts';
 
 // Dependency-free validator for the JSON Schema 2020-12 subset used by the AAA v1 contracts.
 // Unsupported keywords throw, so a schema can never be silently under-validated.
@@ -25,6 +28,8 @@ export type ContractTypes = {
   StarterResult: StarterResult;
   ContextualStarterResult: ContextualStarterResultV1;
   ContextualStarterResultV2: ContextualStarterResultV2;
+  MomentRequest: MomentRequest;
+  MomentResult: MomentResult;
 };
 export type ContractName = keyof ContractTypes;
 
@@ -36,6 +41,8 @@ export const contractSchemas = {
   StarterResult: starterResult,
   ContextualStarterResult: contextualStarterResult,
   ContextualStarterResultV2: contextualStarterResultV2,
+  MomentRequest: momentRequest,
+  MomentResult: momentResult,
 } as const satisfies Record<ContractName, { $id: string }>;
 
 export const allSchemas: readonly { $id: string }[] = [common, ...Object.values(contractSchemas)];
@@ -43,10 +50,10 @@ export const allSchemas: readonly { $id: string }[] = [common, ...Object.values(
 export const SUPPORTED_KEYWORDS = new Set([
   '$schema', '$id', '$ref', '$defs', 'title', 'description',
   'type', 'const', 'enum', 'format',
-  'minLength', 'maxLength', 'pattern', 'minimum',
+  'minLength', 'maxLength', 'pattern', 'minimum', 'maximum',
   'properties', 'required', 'additionalProperties', 'propertyNames', 'minProperties',
   'items', 'minItems', 'maxItems', 'uniqueItems', 'contains', 'minContains', 'maxContains',
-  'allOf', 'anyOf', 'oneOf', 'not', 'if', 'then',
+  'allOf', 'anyOf', 'oneOf', 'not', 'if', 'then', 'else',
 ]);
 
 const registry = new Map<string, Schema>(allSchemas.map(s => [s.$id, s as Schema]));
@@ -106,6 +113,7 @@ function check(schema: Schema, value: unknown, path: string, baseId: string, err
     if (s.format === 'date-time' && !isDateTime(value)) fail('must be a valid date-time');
   }
   if (typeof value === 'number' && s.minimum !== undefined && value < s.minimum) fail(`must be >= ${s.minimum}`);
+  if (typeof value === 'number' && s.maximum !== undefined && value > s.maximum) fail(`must be <= ${s.maximum}`);
 
   if (isObject(value)) {
     const keys = Object.keys(value);
@@ -138,6 +146,7 @@ function check(schema: Schema, value: unknown, path: string, baseId: string, err
   if (s.oneOf && s.oneOf.filter((sub: Schema) => passes(sub, value, baseId)).length !== 1) fail('does not match exactly one allowed shape');
   if (s.not !== undefined && passes(s.not, value, baseId)) fail('must not match the disallowed shape');
   if (s.if !== undefined && s.then !== undefined && passes(s.if, value, baseId)) check(s.then, value, path, baseId, errors);
+  if (s.if !== undefined && s.else !== undefined && !passes(s.if, value, baseId)) check(s.else, value, path, baseId, errors);
 }
 
 const passes = (schema: Schema, value: unknown, baseId: string) => {

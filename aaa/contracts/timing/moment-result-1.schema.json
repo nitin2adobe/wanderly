@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:timing:moment-result-1",
+  "title": "Moment result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "sessionId", "page", "decisionPoint", "decision", "source", "reasonCodes", "assertiveness", "expiresAt", "traceId"],
+  "properties": {
+    "schemaVersion": { "const": "aaa-moment-result-1" },
+    "requestId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "sessionId": { "$ref": "urn:aaa:contracts:v1:common#/$defs/id" },
+    "page": { "$ref": "urn:aaa:contracts:v1:common#/$defs/pageRef" },
+    "decisionPoint": { "$ref": "urn:aaa:contracts:timing:moment-request-1#/properties/decisionPoint" },
+    "decision": { "enum": ["assist", "silent"] },
+    "source": { "enum": ["agent", "safeguard", "agent.failed"] },
+    "judgments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["welcomeNow", "makingProgress", "stuck"],
+      "properties": {
+        "welcomeNow": { "enum": ["yes", "no", "unsure"] },
+        "makingProgress": { "enum": ["yes", "no", "unsure"] },
+        "stuck": { "enum": ["yes", "no", "unsure"] }
+      }
+    },
+    "modelRecommendation": { "enum": ["assist", "silent"] },
+    "confidence": { "enum": ["low", "medium", "high"] },
+    "reasonCodes": {
+      "type": "array",
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["signal.back_and_forth", "signal.revisit", "signal.compared", "signal.long_stay", "signal.price_focus", "signal.info_seeking", "signal.preference_set", "progress.single_focus", "engagement.new_visit", "engagement.low", "transaction.active", "transaction.uncertain", "moment.not_eligible", "timing.model_failed", "timing.unsupported_assist", "timing.no_supported_reason"]
+      }
+    },
+    "assertiveness": { "enum": ["gentle", "default", "eager"] },
+    "expiresAt": { "$ref": "urn:aaa:contracts:v1:common#/$defs/timestamp" },
+    "traceId": { "type": "string", "pattern": "^[0-9a-f]{32}$" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "source": { "const": "agent" } }, "required": ["source"] },
+      "then": { "required": ["judgments", "modelRecommendation", "confidence"] },
+      "else": {
+        "properties": { "decision": { "const": "silent" } },
+        "not": { "anyOf": [
+          { "required": ["judgments"] },
+          { "required": ["modelRecommendation"] },
+          { "required": ["confidence"] }
+        ] }
+      }
+    }
+  ]
+}

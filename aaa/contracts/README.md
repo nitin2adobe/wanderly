@@ -14,6 +14,10 @@ Versioned JSON Schema (draft 2020-12) contracts for the Adaptive Assistance Agen
 
 Shared definitions are in [v1/common.schema.json](v1/common.schema.json). `types.ts` mirrors the schemas in TypeScript. `validate.ts` is a dependency-free validator for the schema subset used here, and it returns `{ path, message }` diagnostics. It throws on any unsupported keyword, so it never under-validates silently. The schemas also compile under Ajv 2020 strict mode.
 
+The additive [timing contracts](timing/) and examples are vendored from AAA revision
+`e3edebfde7ef0ddb8e842f12f6f8e4d19577baa1`. They wrap the unchanged v1 starter
+request and carry only structured decisions and reason codes.
+
 ## Conventions
 
 - **schemaVersion** is required on every contract and is `1.0.0` in v1. Additive, backward-compatible changes bump the minor version. Breaking changes create `v2/` with new `$id`s (`urn:aaa:contracts:v<N>:<name>`).

@@ -223,6 +223,14 @@ AAA only; the site and manual chat launcher remain available. A failed Concierge
 opening is surfaced without automatic replay, and the launcher permits a fresh
 manual opening.
 
+Timing defaults to the existing rules. Set `NEXT_PUBLIC_AAA_TIMING=agent` at build
+time to ask the timing service at settled, paused, revisit and long-stay decision
+points. Safeguards are checked before each request; failures stay silent and two
+consecutive failures or an unavailable model switch the session to rules timing.
+The timing proxy uses `AAA_STARTER_SERVICE_URL` and `AAA_STARTER_ORIGIN` and has
+its own rate and concurrency limits. `AAA_TIMING_TIMEOUT_MS` controls its upstream
+timeout (default 6000 ms). The timing response supplies no visitor-facing wording.
+
 Destination, package-detail and destination-filtered information pages scope
 questions to the current destination only. For example, Japan pages do not reuse
 an earlier Bali/Maldives comparison or Bali FAQ. An open window updates its

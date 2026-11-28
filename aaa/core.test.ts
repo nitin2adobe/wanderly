@@ -233,8 +233,10 @@ test('visible nudge counting is atomic; only its own exposure is discounted on f
   const runtime = host.create();
   runtime.setPage('package-detail', '/item');
   const page = runtime.getPage()!;
+  assert.equal(runtime.getExposureCount(), 0);
   assert.equal(runtime.shown().allowed, true);
   assert.equal(runtime.shown().allowed, false);
+  assert.equal(runtime.getExposureCount(), 1);
   assert.equal(runtime.evaluate({ currentNudge: true }).allowed, true);
   assert.deepEqual(runtime.evaluate({ currentNudge: true, formFocused: true }).reasonCodes, ['form.focused']);
   host.advance(600000);
@@ -255,6 +257,7 @@ test('exposure, dismissal and operation safety survive reload and profile change
   first.track('booking.started', { flowId: 'operation' });
   const reloaded = host.create();
   reloaded.setPage('home', '/');
+  assert.equal(reloaded.getExposureCount(), 1);
   assert.notEqual(reloaded.getPage()?.pageInstanceId, first.getPage()?.pageInstanceId);
   assert.ok(reloaded.evaluate().reasonCodes.includes('exposure.dismissed'));
   assert.ok(reloaded.evaluate().reasonCodes.includes('transaction.active'));
