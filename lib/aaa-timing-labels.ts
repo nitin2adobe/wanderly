@@ -27,13 +27,16 @@ export function timingReasonLabels(codes: readonly string[], names: readonly str
 
 export function timingOutcomeLabel(source: string, outcome: string, codes: readonly string[]): string {
   if (source === 'safeguard') {
+    if (outcome === 'blocked' && codes.length === 1 && codes[0] === 'moment.not_assist') {
+      return "No help offered on this page (the agent wasn't asked)";
+    }
     const reason = codes.includes('transaction.active') ? 'booking in progress'
       : codes.includes('transaction.uncertain') ? 'booking may be in progress'
       : codes.map(explainReason).find(Boolean)?.toLowerCase() ?? 'help is not eligible here';
     return `Safeguard: ${reason} (the agent wasn’t asked)`;
   }
   if (source === 'rules.fallback') return 'Timing by rules (agent unavailable)';
-  if (source === 'agent.failed') return 'Stayed silent: agent didn’t answer in time';
+  if (source === 'agent.failed') return 'Stayed silent: no usable answer from the agent';
   if (outcome === 'pending') return 'Deciding…';
   return outcome === 'assist' ? 'Stepped in' : 'Stayed silent';
 }
