@@ -46,6 +46,14 @@ test('timing proxy validates both boundaries and handles an unavailable service'
     assert.equal(response.headers.get('x-aaa-trace-id'), resultExample.traceId);
     globalThis.fetch = async () => Response.json({ ...resultExample, text: 'not permitted' });
     assert.equal((await handleMomentRequest(request(requestBody()))).status, 502);
+    globalThis.fetch = async () => Response.json({ code: 'timing.unavailable', correlationId: 'correlation-test' }, { status: 503 });
+    response = await handleMomentRequest(request(requestBody()));
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { reasonCodes: ['timing.unavailable'] });
+    globalThis.fetch = async () => Response.json({ code: 'profile.unavailable', correlationId: 'correlation-test' }, { status: 503 });
+    response = await handleMomentRequest(request(requestBody()));
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { reasonCodes: ['timing.service_failed'] });
     let release!: () => void;
     const gate = new Promise<void>(resolve => { release = resolve; });
     globalThis.fetch = async () => { await gate; return Response.json(resultExample); };

@@ -39,8 +39,11 @@ export async function handleMomentRequest(request: Request) {
     if (response.status === 429) return error(429, 'timing.rate_limited');
     if (response.status === 503) {
       const body: unknown = await response.json();
-      if (body && typeof body === 'object' && 'reasonCodes' in body && Array.isArray(body.reasonCodes)
-        && body.reasonCodes.includes('timing.unavailable')) return error(503, 'timing.unavailable');
+      if (body && typeof body === 'object'
+        && (('code' in body && body.code === 'timing.unavailable')
+          || ('reasonCodes' in body && Array.isArray(body.reasonCodes) && body.reasonCodes.includes('timing.unavailable')))) {
+        return error(503, 'timing.unavailable');
+      }
       return error(503, 'timing.service_failed');
     }
     if (!response.ok) return error(502, 'timing.service_failed');

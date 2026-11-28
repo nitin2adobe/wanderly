@@ -4,6 +4,9 @@ import { travelJourney, travelProfile } from '../sites/wanderly/contract-example
 import type { ActivationProvider, ActivationSnapshot } from './aaa-activation.ts';
 import { createTimingController, type TimingEntry } from './aaa-timing.ts';
 import type { DecisionPoint } from './aaa-decision-points.ts';
+import { validateContract } from '../aaa/contracts/validate.ts';
+import reviewedProfile from '../sites/wanderly/profile.json' with { type: 'json' };
+import { handleMomentRequest } from './aaa-moment-route.ts';
 
 function fixture() {
   let snapshot: ActivationSnapshot | undefined = {
@@ -133,4 +136,62 @@ test('controllers share a session slot and run only the newest queued point afte
   assert.equal(await replaced, undefined);
   assert.equal((await latest)?.point.sequence, 3);
   assert.equal(f.calls(), 2);
+});
+
+test('controller and proxy exchange a validated decision without bypassing safeguards', async () => {
+  const f = fixture();
+  const profile = validateContract('SiteProfile', reviewedProfile);
+  assert.ok(profile.valid);
+  const journey = structuredClone(f.get().journey);
+  journey.profileId = profile.value.profileId;
+  journey.profileVersion = profile.value.profileVersion;
+  for (const signal of journey.raw.signals) {
+    signal.profileId = journey.profileId;
+    signal.profileVersion = journey.profileVersion;
+  }
+  f.set({ ...f.get(), journey, profile: profile.value });
+  const oldFetch = globalThis.fetch;
+  const oldEndpoint = process.env.AAA_STARTER_SERVICE_URL;
+  let upstreamCalls = 0;
+  try {
+    process.env.AAA_STARTER_SERVICE_URL = 'http://127.0.0.1:12345/aaa/starters';
+    globalThis.fetch = async (input, init) => {
+      assert.equal(String(input), 'http://127.0.0.1:12345/aaa/moment');
+      upstreamCalls++;
+      const request = JSON.parse(String(init?.body));
+      return Response.json({
+        schemaVersion: 'aaa-moment-result-1', requestId: request.request.requestId,
+        sessionId: request.request.journey.sessionId, page: request.request.journey.page,
+        decisionPoint: request.decisionPoint, decision: 'assist', source: 'agent',
+        judgments: { welcomeNow: 'yes', makingProgress: 'no', stuck: 'yes' },
+        modelRecommendation: 'assist', confidence: 'medium', reasonCodes: ['signal.compared'],
+        assertiveness: 'default', expiresAt: new Date(Date.now() + 30000).toISOString(), traceId: 'a'.repeat(32),
+      });
+    };
+    const controller = createTimingController(f.provider, async (_input, init) =>
+      handleMomentRequest(new Request('http://localhost/api/aaa/moment', init)));
+    assert.equal((await controller.decide(f.point(1), 0))?.outcome, 'assist');
+    f.set({ ...f.get(), allowed: false, reasonCodes: ['transaction.active'] });
+    assert.equal((await controller.decide(f.point(2), 0))?.outcome, 'blocked');
+    assert.equal(upstreamCalls, 1);
+    const unavailable = fixture();
+    const unavailableJourney = structuredClone(journey);
+    unavailableJourney.sessionId = unavailable.get().journey.sessionId;
+    for (const signal of unavailableJourney.raw.signals) signal.sessionId = unavailableJourney.sessionId;
+    unavailable.set({ ...unavailable.get(), journey: unavailableJourney, profile: profile.value });
+    globalThis.fetch = async () => {
+      upstreamCalls++;
+      return Response.json({ code: 'timing.unavailable', correlationId: 'correlation-test' }, { status: 503 });
+    };
+    const fallback = createTimingController(unavailable.provider, async (_input, init) =>
+      handleMomentRequest(new Request('http://localhost/api/aaa/moment', init)));
+    assert.equal((await fallback.decide(unavailable.point(1), 0))?.source, 'agent.failed');
+    assert.equal(fallback.mode(unavailableJourney.sessionId), 'rules.fallback');
+    assert.equal((await fallback.decide(unavailable.point(2), 0))?.source, 'rules.fallback');
+    assert.equal(upstreamCalls, 2);
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldEndpoint === undefined) delete process.env.AAA_STARTER_SERVICE_URL;
+    else process.env.AAA_STARTER_SERVICE_URL = oldEndpoint;
+  }
 });
