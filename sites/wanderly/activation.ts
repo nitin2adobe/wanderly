@@ -7,7 +7,7 @@ import {
 
 /** Wanderly wiring only; activation itself never derives signals or duplicates suppression policy. */
 export const wanderlyActivation: ActivationProvider = {
-  refresh: refreshNudgeSettings,
+  refresh: () => refreshNudgeSettings(true),
   read(currentNudge, visitorActivation = false) {
     const availability = getAaaRuntime().get();
     if (!availability.enabled || !getSessionId()) return;

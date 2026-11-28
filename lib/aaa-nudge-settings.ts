@@ -38,11 +38,11 @@ export function createNudgeSettingsClient({ profileId, enabled, storage, fetchIm
       console.warn('[aaa-settings] cache.unavailable', error instanceof Error ? error.name : 'unknown');
     }
   };
-  const refresh = async () => {
+  const refresh = async (force = false) => {
     if (!enabled()) return;
     initialize();
     if (pending) return pending;
-    if (now() < nextRefresh) return;
+    if (!force && now() < nextRefresh) return;
     nextRefresh = now() + REFRESH_MS;
     const requestEpoch = epoch;
     const request = (async () => {

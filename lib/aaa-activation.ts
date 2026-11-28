@@ -131,7 +131,9 @@ export function createActivationController(provider: ActivationProvider, fetchIm
           } catch (error) {
             if (controller.signal.aborted) throw error;
             console.warn('[aaa-activation] contextual.fallback');
-            response = await fetchResult('/api/aaa/starters', starterServiceTimeoutMs() + 2000);
+            response = process.env.NEXT_PUBLIC_AAA_DIRECT_TEMPLATE_FALLBACK === '1'
+              ? templateStarters(request, snapshot.profile, 'service.unavailable')
+              : await fetchResult('/api/aaa/starters', starterServiceTimeoutMs() + 2000);
           }
         } catch (error) {
           if (controller.signal.aborted) {

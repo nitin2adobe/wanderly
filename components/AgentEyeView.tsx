@@ -5,7 +5,7 @@ import { AAA_TRACE_CHANGED, acceptFrameActivationTrace, getActivationTraces } fr
 import { consideredReasons, decisionDetails, explainReason, friendlyExplainId, provenanceLabel } from '@/lib/aaa-explain-labels';
 import GroundingScoreboard from '@/components/GroundingScoreboard';
 import { AAA_TIMING_CHANGED, acceptFrameTimingEntry, timingTimeline, type TimingEntry } from '@/lib/aaa-timing';
-import { timingOutcomeLabel, timingPointLabel, timingReasonLabels } from '@/lib/aaa-timing-labels';
+import { timingOutcomeLabel, timingPointLabel, timingReasonLabels, timingVisitLimitReached } from '@/lib/aaa-timing-labels';
 
 type RecordValue = Record<string, unknown>;
 const object = (value: unknown): RecordValue => value && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : {};
@@ -103,6 +103,9 @@ export default function AgentEyeView({ sessionId }: { sessionId: string }) {
               {entry.confidence && <p>Self-reported confidence: {entry.confidence}.</p>}
             </details>}
           </li>)}
+          {timingVisitLimitReached(timingEntries) && <li key="visit-limit-reached">
+            <p><strong>Visit limit reached, so the agent won't be asked again. Use Reset demo.</strong></p>
+          </li>}
         </ol>
         {(() => {
           const first = timingEntries.find(entry => entry.rulesWouldAssist);

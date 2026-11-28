@@ -2,6 +2,7 @@ import type { JourneyState } from '../aaa/contracts/types.ts';
 
 export type DecisionPointKind = 'page_settled' | 'activity_paused' | 'long_stay' | 'revisit';
 export type DecisionPoint = { kind: DecisionPointKind; sequence: number; pageSequence: number; pageInstanceId: string };
+export const TIMING_VISIT_LIMIT = 20;
 export type DecisionPointConfig = {
   settleMs: number; revisitMs: number; quietMs: number; minGapMs: number;
   longStayMs: number[]; perPage: number; perSession: number;
@@ -19,7 +20,7 @@ export function isRevisit(journey: JourneyState): boolean {
 
 const defaults: DecisionPointConfig = {
   settleMs: 2500, revisitMs: 1500, quietMs: 3000, minGapMs: 3000,
-  longStayMs: [15000, 40000], perPage: 4, perSession: 20,
+  longStayMs: [15000, 40000], perPage: 4, perSession: TIMING_VISIT_LIMIT,
 };
 const priority: DecisionPointKind[] = ['revisit', 'activity_paused', 'long_stay', 'page_settled'];
 

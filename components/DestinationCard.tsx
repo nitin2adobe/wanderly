@@ -9,7 +9,7 @@ export default function DestinationCard({ d }: { d: Destination }) {
       <h3>{d.name}</h3>
       <p className="muted">{d.tagline}</p>
       <div className="tags">{d.vibe.map(value => <span className="tag" key={value}>{value}</span>)}</div>
-      <p className="muted">{d.days} suggested / from {d.from} per person, illustrative</p>
+      <p className="muted">{d.days} suggested / from {d.from} per person</p>
       <Link href={`/destinations/${d.slug}`}>Explore {d.name}</Link>
     </div>
   </article>;

@@ -166,6 +166,27 @@ test('contextual results reach activation unchanged, and unavailable proxy falls
   assert.deepEqual(legacyPaths, ['/api/aaa/contextual-starters', '/api/aaa/starters']);
 });
 
+test('direct-template mode uses approved local wording after one contextual failure', async () => {
+  const previous = process.env.NEXT_PUBLIC_AAA_DIRECT_TEMPLATE_FALLBACK;
+  process.env.NEXT_PUBLIC_AAA_DIRECT_TEMPLATE_FALLBACK = '1';
+  try {
+    const f = fixture();
+    const paths: string[] = [];
+    const controller = createActivationController(f.provider, async url => {
+      paths.push(String(url));
+      return new Response(null, { status: 503 });
+    });
+    const prepared = await controller.prepare();
+    assert.ok(prepared);
+    assert.equal(prepared.response.result.outcome, 'fallback');
+    assert.equal(prepared.response.result.starters[0].text, travelProfile.playbooks[0].starters[0].text['en-US']);
+    assert.deepEqual(paths, ['/api/aaa/contextual-starters']);
+  } finally {
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_AAA_DIRECT_TEMPLATE_FALLBACK;
+    else process.env.NEXT_PUBLIC_AAA_DIRECT_TEMPLATE_FALLBACK = previous;
+  }
+});
+
 test('v2 contextual brief and explanation survive activation', async () => {
   const f = fixture();
   const visitorBrief = { text: 'Comparing destinations.', slots: { stage: 'comparing', entityIds: [], priorities: [], openQuestions: [] }, source: 'rendered' };

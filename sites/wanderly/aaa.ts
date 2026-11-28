@@ -30,7 +30,7 @@ function getSettingsClient() {
 }
 
 export function getNudgeSettings() { return getSettingsClient()?.get(); }
-export async function refreshNudgeSettings() { await getSettingsClient()?.refresh(); }
+export async function refreshNudgeSettings(force = false) { await getSettingsClient()?.refresh(force); }
 
 function getRuntime() {
   if (typeof window === 'undefined') return undefined;
@@ -135,7 +135,11 @@ export function startCanonicalInputs(): () => void {
   const settings = getSettingsClient();
   settings?.initialize();
   void settings?.refresh();
-  const settingsTimer = window.setInterval(() => { void settings?.refresh(); }, 5_000);
+  const refreshOnReturn = () => {
+    if (document.visibilityState === 'visible') void settings?.refresh();
+  };
+  window.addEventListener('focus', refreshOnReturn);
+  document.addEventListener('visibilitychange', refreshOnReturn);
   const host = window as Window & { aaa?: typeof aaa; adobeDataLayer?: DataLayer };
   const previous = host.aaa;
   host.aaa = aaa;
@@ -147,7 +151,8 @@ export function startCanonicalInputs(): () => void {
   const layer = host.adobeDataLayer ??= [];
   const acdl = connectDataLayer(layer, collector, () => diagnostic({ code: 'signal.invalid', source: 'acdl' }));
   return () => {
-    window.clearInterval(settingsTimer);
+    window.removeEventListener('focus', refreshOnReturn);
+    document.removeEventListener('visibilitychange', refreshOnReturn);
     attributes(); acdl();
     if (!getAaaRuntime().get().enabled) settings?.reset();
     if (host.aaa === aaa) host.aaa = previous;

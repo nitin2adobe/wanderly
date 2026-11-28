@@ -16,7 +16,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     <section className="pageHero">
       <div className="copy">
         <div className="eyebrow">{destination.country}</div><h1>{destination.name}</h1><p className="muted">{destination.description}</p>
-        <div className="facts"><div className="fact"><strong>{destination.days}</strong><span className="muted">Suggested stay</span></div><div className="fact"><strong>From {destination.from}</strong><span className="muted">Illustrative per person</span></div><div className="fact"><strong>{destination.vibe[0]}</strong><span className="muted">Signature mood</span></div></div>
+        <div className="facts"><div className="fact"><strong>{destination.days}</strong><span className="muted">Suggested stay</span></div><div className="fact"><strong>From {destination.from}</strong><span className="muted">Per person</span></div><div className="fact"><strong>{destination.vibe[0]}</strong><span className="muted">Signature mood</span></div></div>
         <div className="contentActions"><TrackedLink className="btn" href={`/booking?destination=${slug}`} eventType="DATE_SEARCH" entity={slug}>Check dates</TrackedLink><DestinationComparison slug={slug}/><Link className="btn ghost" href="/compare">View comparison</Link></div>
       </div>
       <div className="image" style={{ backgroundImage: `url(${destination.image})` }}/>
@@ -30,7 +30,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       </div>
     </section>
     <section className="section">
-      <div className="sectionHead"><div><div className="eyebrow">A place to unpack</div><h2>Choose your base thoughtfully.</h2></div><p>Open a stay style to see the questions worth asking. These are fictional stay categories, not hotel listings or available rooms.</p></div>
+      <div className="sectionHead"><div><div className="eyebrow">A place to unpack</div><h2>Choose your base thoughtfully.</h2></div><p>Stay styles you can choose from</p></div>
       <div className="booking"><div className="panel">{destination.stayStyles.map(stay => <TrackedDetails key={stay.name} eventType="HOTEL_VIEW" entity={stay.name} summary={stay.name}><p>{stay.description}</p></TrackedDetails>)}</div><div className="panel"><h3>Small details, better days</h3><ul className="list">{destination.practicalNotes.map(note => <li key={note}>{note}</li>)}</ul></div></div>
     </section>
     <section className="section">
@@ -38,6 +38,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       <div className="compare">{choices.map(pack => <PackageCard key={pack.id} pack={pack}/>)}</div>
       <p><Link className="btn ghost" href={`/packages?destination=${slug}`}>Filter {destination.name} journeys</Link></p>
     </section>
-    <div className="notice contentDisclaimer">Fictional travel content and sample prices only. Nothing on this page guarantees weather, room availability, entry eligibility or a final quote.</div>
+    <div className="notice contentDisclaimer">Prices are per person and confirmed at booking. Check entry requirements with official sources.</div>
   </main>;
 }

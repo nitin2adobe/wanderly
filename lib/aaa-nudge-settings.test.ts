@@ -41,6 +41,32 @@ test('settings client retains valid settings across refresh failure and tab relo
   assert.equal(changed, 2);
 });
 
+test('forced refresh bypasses the focus throttle and concurrent forced refreshes share one request', async () => {
+  let time = 0;
+  let calls = 0;
+  let finish!: (response: Response) => void;
+  const client = createNudgeSettingsClient({
+    profileId: 'wanderly', enabled: () => true, now: () => time,
+    fetchImpl: async () => {
+      calls++;
+      return new Promise<Response>(resolve => { finish = resolve; });
+    },
+  });
+  const first = client.refresh();
+  assert.equal(calls, 1);
+  finish(Response.json(configured));
+  await first;
+  await client.refresh();
+  assert.equal(calls, 1);
+  time += 1_000;
+  const forced = client.refresh(true);
+  const duplicate = client.refresh(true);
+  assert.equal(calls, 2);
+  finish(Response.json(configured));
+  await Promise.all([forced, duplicate]);
+  assert.equal(calls, 2);
+});
+
 test('settings reject other profiles, invalid values and unavailable first fetch', async () => {
   for (const payload of [
     { ...configured, profileId: 'another-site' },

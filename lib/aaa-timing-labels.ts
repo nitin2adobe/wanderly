@@ -1,5 +1,9 @@
 import { explainReason } from './aaa-explain-labels.ts';
-import type { DecisionPointKind } from './aaa-decision-points.ts';
+import { TIMING_VISIT_LIMIT, type DecisionPointKind } from './aaa-decision-points.ts';
+
+export function timingVisitLimitReached(entries: readonly { point: { sequence: number } }[]): boolean {
+  return entries.some(entry => entry.point.sequence >= TIMING_VISIT_LIMIT);
+}
 
 export function timingPointLabel(kind: DecisionPointKind): string {
   return {
