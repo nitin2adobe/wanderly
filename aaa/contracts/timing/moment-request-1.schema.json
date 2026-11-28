@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:aaa:contracts:timing:moment-request-1",
+  "title": "Moment request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "request", "decisionPoint", "exposure"],
+  "properties": {
+    "schemaVersion": { "const": "aaa-moment-request-1" },
+    "request": { "$ref": "urn:aaa:contracts:v1:starter-request" },
+    "decisionPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sequence", "pageSequence"],
+      "properties": {
+        "kind": { "enum": ["page_settled", "activity_paused", "long_stay", "revisit"] },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "pageSequence": { "type": "integer", "minimum": 1, "maximum": 4 }
+      }
+    },
+    "exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shownThisSession"],
+      "properties": {
+        "shownThisSession": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    }
+  }
+}

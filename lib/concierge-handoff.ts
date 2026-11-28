@@ -1,13 +1,15 @@
 import type { AssistanceType, DecisionResult } from './assistance-decision.ts';
 import type { ValidationResult } from './assistance-schema.ts';
 import type { JourneyContext } from './journey-context.ts';
+import profile from '../sites/wanderly/profile.json' with { type: 'json' };
 
 const MAX_TEXT_LENGTH = 240;
 const MAX_SIGNAL_LENGTH = 240;
 
 export type ConciergeIntent = Exclude<AssistanceType, 'NONE'>;
 export const conciergeIntents = ['DESTINATION_COMPARISON', 'PACKAGE_SELECTION', 'TRAVEL_INFORMATION'] as const;
-export const conciergePriorities = ['BUDGET', 'ACTIVITIES', 'TRIP_LENGTH'] as const;
+// Legacy UI spelling is adapted from profile-declared values, not a core travel enum.
+export const conciergePriorities = profile.facets.find(facet => facet.id === 'priority')!.values.map(value => value.id.toUpperCase().replaceAll('-', '_'));
 export type ConciergePriority = typeof conciergePriorities[number];
 
 /**

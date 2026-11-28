@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "aaa-moment-result-1",
+  "requestId": "request-demo",
+  "sessionId": "session-demo",
+  "page": {
+    "pageInstanceId": "page-demo",
+    "pageRevision": 0,
+    "pageType": "package-detail"
+  },
+  "decisionPoint": {
+    "kind": "page_settled",
+    "sequence": 1,
+    "pageSequence": 1
+  },
+  "decision": "silent",
+  "source": "agent",
+  "judgments": {
+    "welcomeNow": "no",
+    "makingProgress": "unsure",
+    "stuck": "no"
+  },
+  "modelRecommendation": "silent",
+  "confidence": "medium",
+  "reasonCodes": [
+    "engagement.new_visit"
+  ],
+  "assertiveness": "default",
+  "expiresAt": "2026-11-25T10:00:31.000Z",
+  "traceId": "0123456789abcdef0123456789abcdef"
+}

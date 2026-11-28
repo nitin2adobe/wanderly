@@ -27,6 +27,6 @@ export default function Home() {
       </div>
     </section>
     <section className="section"><div className="band"><div><div className="eyebrow">Not sure yet?</div><h2>Follow the feeling, not the filter.</h2><p>Search for a mood or an experience, then compare the destinations that fit. You can ask practical questions before committing to dates.</p></div><div><TripSearch/><p><Link className="btn secondary" href="/travel-info">Read practical travel answers</Link></p></div></div></section>
-    <div className="notice contentDisclaimer">Wanderly is a fictional demo. Prices, stays, itineraries and seasonal notes are illustrative; there is no live availability or booking service.</div>
+    <div className="notice contentDisclaimer">Prices are per person, based on two adults sharing, and confirmed at booking.</div>
   </div></main>;
 }

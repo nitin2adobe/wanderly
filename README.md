@@ -16,6 +16,10 @@ A fictional premium travel marketplace for the Adaptive Assistance Agent POC.
 - `/compare`
 - `/travel-info`
 - `/booking`
+- `/agent` This tab's journey and client activation inspector
+- `/agent/legacy` Legacy comparison and timeline inspector
+- `/demo/live` Customer journey alongside the agent's visitor-safe explanation
+- `/demo/compare` Three-lane presenter comparison
 
 ## Run locally
 Requires Node 22.6+.
@@ -28,6 +32,20 @@ npm run typecheck
 ```
 
 Open http://localhost:3000. Step 3 decisioning and the AI reasoner are documented in [STEP3.md](STEP3.md).
+
+### AAA service boundary
+
+The operator console and marketer authoring belong to the separate
+[Adaptive Assistance Agent](https://github.com/BNanda99/adaptive-assistance-agent),
+not this storefront. Wanderly has no operator proxy or operator credentials.
+Its starter proxy retains `X-AAA-Trace-Id` for correlation, and `/agent` shows
+only this tab's journey and reason-code-only client activation record. The
+legacy AI comparison is at `/agent/legacy`.
+
+The browser and Next starter proxy bundle `profile.json`. Updating a service
+bundle alone does not update the storefront's profile or fallback templates;
+profile changes require coordinated matching site and service deployment.
+Do not reload during a submission or retry an uncertain submission.
 
 ### GitHub Pages build
 
@@ -46,7 +64,9 @@ npm run build
 Remove-Item Env:WANDERLY_STATIC_EXPORT
 ```
 
-The exported `out` directory has no live `/api/assistance/reason` endpoint.
+The static export omits every `app/api` route handler (`.ts` files are excluded
+from route discovery only when `WANDERLY_STATIC_EXPORT=true`), so the exported
+`out` directory has no live `/api/assistance/reason` or `/api/aaa/*` endpoints.
 Use rules-mode assistance on Pages; live server-side AI reasoning requires a
 Next.js server deployment. A normal `npm run build` retains that server endpoint.
 
@@ -83,20 +103,141 @@ Step 1 was UI only; instrumentation (Step 2) and assistance decisioning (Step 3)
 
 ## Brand Concierge
 
-On Wanderly customer pages, a policy-approved `ASSIST` decision opens the Adobe
-Brand Concierge Web Client with a **suggested question, not an automatically sent
-visitor message**. This intentional default change uses Adobe's documented
-`arrays["welcome.examples"]` configuration and `webclient:initialized` event.
-A visible Wanderly notice explains the browsing-based suggestion; the visitor
-chooses whether to submit it. An unsent welcome suggestion is refreshed through
-bootstrap when its question changes. Submitted conversations are preserved, with
-a copy button for the updated question instead of resetting history.
+### Assistance privacy
+
+The demo consent banner is used only when no host CMP adapter is present.
+Sites with a CMP must install `window.aaaConsentAuthority` before AAA loads,
+with `get()` returning `pending`, `granted` or `denied` and `subscribe(listener)`
+returning an unsubscribe function. An invalid adapter fails closed. AAA does not
+configure a host-owned Web SDK; its page-context transport therefore needs a
+separate host integration. Manual chat follows Brand Concierge's own policy.
+
+Journey events are minimized to approved catalog values and typed metadata.
+They are kept per browser tab in `sessionStorage`, rather than in a shared
+journey store. A tab's session expires after the configured inactivity period (30
+minutes by default and at most 30 minutes): reads enforce
+expiry, and a sweep deletes it each minute and whenever the tab becomes visible
+again. Tabs purge their own journeys when they receive a decline. Older builds' shared
+`localStorage` journey key is removed on load. Background tabs may have their
+timers throttled or suspended, so deletion can be delayed until the tab next
+runs. Closing a tab normally discards its `sessionStorage`, but browser session
+restore, "duplicate tab", or opening a same-origin tab with an opener can copy it
+(the new tab then continues as a separate copy), and physical deletion from disk
+is not guaranteed.
+Only catalog-derived page details are added to the AAA context. The separate
+Concierge Service forwarding path remains unverified, and the demo BCOS
+configuration may still read the Web SDK's standard URL including query data.
+
+Each Web SDK event also reads the current canonical journey and attaches only
+the profile's approved `contextMap` fields under
+`_adaptiveAssistance.journeyContext`, including `pageRevision`. Stale or
+over-budget journey context is omitted without blocking the event or manual chat.
+This request-side delivery does not prove that the external Concierge Service
+forwards those fields to BCOS or uses them in its answer.
+
+### Site connections and guided authoring
+
+The developer-owned [`sites/wanderly/profile.json`](sites/wanderly/profile.json)
+declares the page taxonomy, signal mappings and other site connections. Its
+configured mappings expose these generic behaviors to guided authoring:
+
+| Visitor behavior | Canonical signal | Wanderly example |
+| --- | --- | --- |
+| View a page | `page.viewed` | Open a destination or package page |
+| View an item | `entity.viewed` | View a destination or package |
+| Compare items | `entity.compared` | Compare selected destinations |
+| Seek information | `info.sought` | View practical or sample-price information |
+| Select a preference | `facet.selected` | Select a trip priority |
+| Progress through a transaction | `transaction.step` | Start or advance booking |
+
+Developers wire sources once: the site's `track` adapter, configured
+`data-aaa-*` attributes on click/change/submit, or mapped Adobe Client Data Layer
+events. A mapping declares a capability; it does not prove that the site actually
+emits the event. The collector validates the canonical signal and profile
+taxonomy before recording it. Transaction completion or cancellation needs an
+explicitly confirmed matching flow; leaving a page or idling is not confirmation.
+
+Marketers work with guided Playbooks and Nudge Settings rather than editing
+`signalMap`. A rule can be shared by multiple playbooks, so changing its
+conditions affects all of them. The first matching rule wins; all specified
+conditions must match. Playbook eligibility, approved evidence and consent,
+transaction and form safeguards still apply.
+
+An exported authoring draft is **not live**. A developer must review and deploy
+the versioned profile to both the site and AAA service, with matching profile ID
+and version. The site currently bundles the reviewed profile; saving or exporting
+in the console does not replace it.
+
+For the comparison page, the current pair's canonical IDs travel in the existing
+starter request. The consent-gated page-context summary carries only that pair's
+available demo-approved catalog trade-offs; it is omitted if either fact is
+missing. These fictional facts are demo-approved, not brand or legal approved.
+Real content review remains future work. One comparison can trigger the demo
+moment without a practical-information lookup; transaction and exposure safeguards
+remain in effect.
+
+On Wanderly customer pages, the canonical Site Profile's `ASSIST` moment and
+suppression policy can show an optional, non-modal nudge. **AAA never opens chat
+until the visitor clicks Open chat, and never submits a question.** A separate
+click on an SDK welcome question submits it. The nudge has a dismissal control,
+keyboard support, a polite announcement and a "Why am I seeing this?" disclosure;
+it never takes focus just by appearing. Dismissal is recorded by the canonical
+policy. Existing conversations are never reset by AAA activation; consent
+revocation's separate welcome reset is unchanged.
+
+Before display, on click, and again after SDK readiness, activation rechecks the
+canonical policy, session, profile version, page instance/revision, locale and
+expiry. Navigation during generation drops the result with a reason code. Only
+one generation request per session can be in flight.
+
+The per-site Authoring nudge settings control the minimum interval, session cap,
+inactivity expiry, dismissal suppression and chat-open suppression. Changes take
+effect after activation; the site refreshes them after consent and before nudge
+generation and activation, with a five-second cache. The server proxy pins the
+reviewed profile and configured origin. If settings are unavailable or invalid,
+the tab retains its last valid settings, or uses the existing defaults. Consent,
+transaction and focused-form safeguards remain mandatory.
+
+Set server-only `AAA_STARTER_SERVICE_URL` to the Python service's full
+`POST /aaa/starters` URL when it is running. The site requests the opt-in
+`/api/aaa/contextual-starters` proxy, which validates v1 or v2 contextual envelopes
+and their frozen v1 result. If the contextual endpoint is unavailable or invalid, it
+falls back to `/aaa/starters` and then eligible local templates. A validated
+headline is used for the nudge, and returned starter text is shown unchanged.
+An optional validated visitor brief is kept in memory, scoped to the current
+session and profile, and added to journey XDM only while chat is open and it fits
+the field and aggregate limits. This is request-side packaging, not proof that
+Concierge receives or uses it. The spike flag and preset controls are deferred.
+The proxy
+uses the configured `AAA_STARTER_ORIGIN` (default `http://localhost:3000`), not a
+caller-supplied tenant/origin. For the separate service's 15-second demo trial,
+set `NEXT_PUBLIC_AAA_DEMO_SERVICE_TIMEOUT_MS=18000` before building/starting:
+each upstream attempt waits at most 18 seconds; the browser allows time for
+contextual and legacy attempts plus bounded trace retrieval. Values outside 1000–30000 milliseconds log a configuration
+warning and retain the default. These asynchronous demo settings leave the page
+and manual launcher responsive; they do not establish the 1.5-second production
+latency requirement. Unconfigured,
+unavailable or invalid service responses fall back to eligible, approved profile
+templates, or abstain when no helpful primary template exists. Static Pages
+deployments use the same local template/abstain fallback without a server endpoint.
+No live BC tenant or manifest configuration is changed. Invalid profiles disable
+AAA only; the site and manual chat launcher remain available. A failed Concierge
+opening is surfaced without automatic replay, and the launcher permits a fresh
+manual opening.
+
+Timing defaults to the existing rules. Set `NEXT_PUBLIC_AAA_TIMING=agent` at build
+time to ask the timing service at settled, paused, revisit and long-stay decision
+points. Safeguards are checked before each request; failures stay silent and two
+consecutive failures or an unavailable model switch the session to rules timing.
+The timing proxy uses `AAA_STARTER_SERVICE_URL` and `AAA_STARTER_ORIGIN` and has
+its own rate and concurrency limits. `AAA_TIMING_TIMEOUT_MS` controls its upstream
+timeout (default 6000 ms). The timing response supplies no visitor-facing wording.
 
 Destination, package-detail and destination-filtered information pages scope
 questions to the current destination only. For example, Japan pages do not reuse
 an earlier Bali/Maldives comparison or Bali FAQ. An open window updates its
 browsing-based question on destination navigation without automatically sending
-it; the manual launcher also supplies a current-destination suggestion.
+it; after assistance consent the manual launcher also supplies a current-destination suggestion.
 Every manual opening recomputes its suggestion from the current session's last
 eight meaningful browsing signals: approved FAQ clicks, stay disclosures,
 package/price views and comparison actions. Recent information-selector changes
@@ -122,12 +263,12 @@ wording. The primary question, approved welcome alternatives and any explicitly
 chosen priority enter the SDK configuration, not raw events, policy evidence or
 the local session ID.
 
-Welcome examples are dynamic catalog/template questions, not LLM-generated text.
-A fresh, unscoped session offers all six current destinations, including Thailand
-and Portugal, overriding the old four-place defaults in the styling file.
+AAA welcome examples come from a validated v1 `StarterResult`; manual welcome
+examples still use catalog/template questions.
 Destination browsing supplies relevant journey and approved FAQ examples;
 package views use actual package names, and comparisons use the trusted shortlist.
-The browsing-based primary question remains first, with duplicate examples removed.
+There are zero to three pills in total, including the helpful primary; there is
+no padding with default questions. Duplicate examples are removed.
 Examples are recomputed on opening/reopening and destination navigation. Changes
 to secondary examples also refresh an unsent welcome, but submitted conversations
 are never rebootstrapped. Same-page clicks do not continually reset an open input;
@@ -147,31 +288,46 @@ history. A truly fresh session has no personalized choices to infer and therefor
 shows general catalog examples. For a submitted Adobe conversation, the updated
 question is shown in Wanderly's banner/copy control rather than resetting history.
 
-Both rules and AI proposals retain the same policy gate. Opening is asynchronous
+AAA consumes the canonical suppression policy rather than the legacy rules/AI
+comparison preview. Exposure is recorded exactly when a nudge is shown, not when
+chat opens; failed generation does not consume exposure. Opening is asynchronous
 and bounded: `ASSISTANCE_REQUESTED` becomes acknowledged `ASSISTANCE_OPENED`,
 `ASSISTANCE_FAILED` or `ASSISTANCE_CANCELLED`. Only delivered assistance consumes
-the invitation budget; failures do not count as successful handling. SDK
+the delivery metrics; failures do not count as successful handling. SDK
 initialization, message submission, response completion, feedback and visitor
 acceptance are distinct. A response-completed event is not proof of correctness.
 Closing or progression cancels a pending local request. The Volt Electronics
 fixture still has no live Adobe concierge.
 
-The trace's **Active decision** comes from the plugin's recorded evaluation for
-the current journey and selected mode (`ASSISTANCE_EVALUATED`). In AI-assisted
-mode, a rules-baseline `ASSIST` does not open chat when the active AI returns
-`WAIT` or `SILENT`; the trace now shows that actual decision and source. Until an
-evaluation arrives it shows "Awaiting active evaluation", not the rules result.
-The per-signal timeline remains explicitly labelled as the rules baseline.
-The current policy gate can block further invitations after a chat has already
-opened. Use **Rules** and replay a fresh **Right moment** scenario for the
-deterministic chat-opening demo. AI-assisted outcomes may legitimately differ.
+The `/agent` inspector's **AAA starter trace** shows bounded reason codes for
+generation, tool calls, rejected alternatives, validator verdicts, fallbacks and
+suppression when supplied by the service. It never includes raw page content,
+tool inputs/outputs or generated questions. Traces are held in memory in this
+tab and lost on a full reload. The proxy forwards `X-AAA-Trace-Id` and reads the
+separately versioned `/aaa/traces/<id>` diagnostic events using the same trusted
+origin; trace failures do not replace an otherwise valid starter result.
+The older rules/AI comparison and per-signal timeline are at `/agent/legacy`;
+they do not control AAA activation.
+
+The `/demo/live` agent view displays visitor-scoped explanation data when
+available; it is not a model transcript or evidence that Concierge used the
+brief. `/demo/compare` compares Concierge alone, local approved templates, and
+AAA on the same eligible journey. Its ambient block is a preview copied from
+the tenant template, not proof of delivery. Both pages label the grounding
+scoreboard as scripted, including a separate written-question gate replay; live
+review and latency remain pending.
+Contextual starter envelopes v2 and v3 are supported; v3 can label a helpful
+question as written by the agent after service checks. The draft
+`sites/wanderly/vocabulary.json` requires review before written starters are
+enabled. Existing templates and commercial starters are unchanged.
 
 The demo now has five scenarios: **Right moment** (Bali/Maldives comparison),
 **Choose a package** (Island Rhythm/Bali Slow Living), **Practical travel
 questions** (Japan entry guidance), **Right restraint** (no proactive chat during
-booking progress), and **Respectful adaptation** (no repeat after dismissal).
+booking progress), and **Respectful adaptation** (no repeat after dismissal with
+the default nudge settings).
 Comparison scenarios land on `/compare`; the others land on the relevant
-customer page in Rules mode. Starting another
+customer page. Starting another
 scenario closes the previous chat window and resets Wanderly's session, not
 Adobe conversation history. Once a question has been submitted, use the updated
 Wanderly question banner/copy button rather than expecting new welcome pills.
@@ -184,7 +340,8 @@ with `NEXT_PUBLIC_BC_LEGACY_AUTO_SUBMIT=true` at build time. It awaits a matchin
 `query:submitted` event, not bootstrap return. Timeouts/cancellation may leave SDK
 submission outcome unknown: the SDK has no verified public cancellation API.
 Such requests are not automatically replayed; reload recovery and manual retries
-do not auto-submit. Use default suggestion mode for a supported interaction path.
+do not auto-submit. Typed AAA starter activation cannot use this hook even when the
+flag is enabled. Use default suggestion mode for a supported interaction path.
 
 ### Ground BC in the current catalog
 
@@ -253,16 +410,16 @@ The prototype uses remote travel imagery in `lib/data.ts`. Replace those URLs wi
 Step 2 adds anonymous browser-session instrumentation and an internal journey inspector.
 
 - A session ID is stored in `sessionStorage` (new browser tab/session = new anonymous session).
-- The POC's journey events are stored locally in `localStorage`. Adobe's Web SDK and chat handle their own data separately.
+- The POC's journey events are stored per tab in `sessionStorage`. Adobe's Web SDK and chat handle their own data separately.
 - Route changes emit `PAGE_VIEW` plus semantic events such as `DESTINATION_VIEW`, `COMPARE_VIEW`, `TRAVEL_INFO_VIEW`, and `BOOKING_START`.
-- Open `/agent` in a second tab to inspect the live session event timeline.
+- Open `/agent/legacy` in the same tab to inspect the session event timeline.
 - Click **New session** in `/agent` to clear the current session and start a fresh test journey.
 
 ### Step 2 acceptance journey
 
-1. Open `/agent` in one tab.
-2. Open `/` in another tab.
-3. Browse `Bali -> Maldives -> Compare -> Maldives`.
+1. Open `/` and allow assistance.
+2. Browse `Bali -> Maldives -> Compare -> Maldives` in the same tab.
+3. Open `/agent` in that tab.
 4. Confirm the inspector shows the route/page events and semantic journey signals.
 
 AI `SILENT / WAIT / ASSIST` reasoning is deliberately deferred to Step 3.
@@ -270,4 +427,12 @@ AI `SILENT / WAIT / ASSIST` reasoning is deliberately deferred to Step 3.
 
 ## Step 2 complete - Journey Context Builder
 
-The `/agent` inspector now shows both raw events and deterministic interpreted context: destination switching, comparison activity, pricing exploration, information seeking, booking progression, overall journey progression, and potential friction. This normalized context is the input contract for Step 3 AI decisioning.
+The `/agent/legacy` inspector shows raw events and deterministic interpreted context: destination switching, comparison activity, pricing exploration, information seeking, booking progression, overall journey progression, and potential friction. This normalized context is the input contract for Step 3 AI decisioning.
+
+## Scripted timing replay
+
+Run `npm run evaluate:timing` for a single scripted replay of the 37 labelled journeys. It uses the actual journey runtime, rule matching, suppression and exposure budgets; the deterministic scripted judge is a pipeline fixture, not a model evaluation. The zero-based `stepInFrom` labels are approved. The report writes to stdout and reports latency as unavailable.
+
+The replay approximates one decision point 3 seconds after each event, with events 4 seconds apart; it does not simulate long stays, visibility, chat, form focus or dismissals. It infers missing comparison selections from the last two distinct destinations, emits no signal for date searches, and reuses runtime page instances for the same URL. Package-only comparisons may therefore be blocked by eligibility or comparison selection. Rules and scripted timing are independent sessions with actual exposure cooldown; their end-of-journey agreement reflects the final decision point, not the reference's exposure-free baseline. Live evaluation is not implemented.
+
+The report includes separate holdout metrics and a destination/package swap check. ASSIST journeys with invalid comparison selection at their labelled moment are listed as unreachable and excluded from assist and end-agreement denominators rather than counted as misses. The swap check compares decisions, safeguards and call counts, not fabricated model or latency results.

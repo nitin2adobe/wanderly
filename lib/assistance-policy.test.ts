@@ -50,7 +50,7 @@ test('a visible invitation blocks another', () => {
 });
 
 test('a dismissed, accepted or automatically triggered type is not offered again', () => {
-  for (const response of ['ASSISTANCE_DISMISSED', 'ASSISTANCE_ACCEPTED', 'ASSISTANCE_TRIGGERED'] as const) {
+  for (const response of ['ASSISTANCE_ACCEPTED', 'ASSISTANCE_TRIGGERED'] as const) {
     const session = [
       assistanceEvent('ASSISTANCE_SHOWN', 'DESTINATION_COMPARISON', '2026-01-01T00:00:00Z'),
       assistanceEvent(response, 'DESTINATION_COMPARISON', '2026-01-01T00:00:30Z'),
@@ -60,28 +60,24 @@ test('a dismissed, accepted or automatically triggered type is not offered again
   }
 });
 
-test('cooldown applies after a dismissal and expires', () => {
+test('one visitor dismissal suppresses all further invitations regardless of elapsed time', () => {
   const session = [
     assistanceEvent('ASSISTANCE_SHOWN', 'PACKAGE_SELECTION', '2026-01-01T00:08:00Z'),
     assistanceEvent('ASSISTANCE_DISMISSED', 'PACKAGE_SELECTION', '2026-01-01T00:09:00Z'),
   ];
-  assert.equal(evaluate(journey2, session).rule, 'COOLDOWN');
-  assert.equal(evaluate(journey2, session, new Date('2026-01-01T00:12:00Z')).allowed, true);
+  assert.equal(evaluate(journey2, session).rule, 'REPEATED_DISMISSALS');
+  assert.equal(evaluate(journey2, session, new Date('2026-01-01T01:12:00Z')).allowed, false);
 });
 
-test('each visitor dismissal doubles the cooldown', () => {
+test('cooldown is measured between visible invitations, with a ten-minute lower bound', () => {
   const session = [
     assistanceEvent('ASSISTANCE_SHOWN', 'PACKAGE_SELECTION', '2026-01-01T00:00:00Z'),
-    assistanceEvent('ASSISTANCE_DISMISSED', 'PACKAGE_SELECTION', '2026-01-01T00:01:00Z'),
+    assistanceEvent('ASSISTANCE_ACCEPTED', 'PACKAGE_SELECTION', '2026-01-01T00:01:00Z'),
   ];
-  // One dismissal: 120s cooldown has passed 150s later.
-  assert.equal(evaluate(journey2, session, new Date('2026-01-01T00:03:30Z')).allowed, true);
-  const afterSecond = [
-    ...session,
-    assistanceEvent('ASSISTANCE_SHOWN', 'TRAVEL_INFORMATION', '2026-01-01T00:04:00Z'),
-    { ...assistanceEvent('ASSISTANCE_DISMISSED', 'TRAVEL_INFORMATION', '2026-01-01T00:05:00Z'), metadata: { assistanceType: 'TRAVEL_INFORMATION', reason: 'visitor' } },
-  ];
-  assert.equal(evaluate(journey2, afterSecond, new Date('2026-01-01T00:05:00Z')).rule, 'REPEATED_DISMISSALS');
+  assert.equal(evaluate(journey2, session, new Date('2026-01-01T00:09:59.999Z')).rule, 'COOLDOWN');
+  assert.equal(evaluate(journey2, session, new Date('2026-01-01T00:10:00Z')).allowed, true);
+  const context = buildJourneyContext(journeyEvents(journey2));
+  assert.equal(evaluatePolicy(decideAssistance(context), context, [], NOW, { minConfidence: 0.8, maxInvitationsPerSession: 5, cooldownMs: 120000 }).rule, 'INVALID_POLICY');
 });
 
 test('plugin withdrawals do not trigger the repeated-dismissal stop', () => {

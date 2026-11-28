@@ -11,6 +11,17 @@ import { getEvents, getSessionId, track } from '@/lib/tracking';
 import { createConciergeEventRouter } from '@/lib/concierge-observer';
 import { defaultConciergeWelcomeExamples, manualConciergeSuggestion } from '@/lib/concierge-context';
 import { getComparisonSlugs } from '@/components/DestinationComparison';
+import { createAmbientContextHook, readAmbientPage } from '@/lib/ambient-context';
+import { getConsentAuthority, startConsentGatedWebSdk } from '@/lib/aaa-consent';
+import { getAaaRuntime, isAaaEnabled } from '@/lib/aaa-runtime';
+import { createConciergeJourneyContextReader } from '@/lib/concierge-context-packager';
+import { getCanonicalJourney, getCurrentPage, getComparisonSelection } from '@/sites/wanderly/aaa';
+import { comparisonContext, comparisonSummary } from '@/sites/wanderly/comparison';
+import { visitorBriefStore } from '@/lib/aaa-visitor-brief';
+import { useAaaAvailability, useAaaConsent } from '@/components/AaaConsent';
+
+// True once this component has installed the Web SDK, so a remount does not mistake it for a host-owned one.
+let ownsAlloy = false;
 
 declare global {
   interface Window {
@@ -22,8 +33,19 @@ declare global {
 }
 
 export default function BrandConcierge() {
+  const aaa = useAaaAvailability();
+  const consent = useAaaConsent();
   const [isOpen, setIsOpen] = useState(false);
   const isOpenRef = useRef(false);
+  const readConciergeJourneyContext = createConciergeJourneyContextReader({
+    getProfile: () => {
+      const availability = getAaaRuntime().get();
+      return availability.enabled ? availability.active.profile : undefined;
+    },
+    getCanonicalJourney,
+    getCurrentPage,
+    getVisitorBrief: () => visitorBriefStore.get(isOpenRef.current),
+  });
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const launcherRef = useRef<HTMLButtonElement>(null);
   const windowRef = useRef<HTMLDivElement>(null);
@@ -37,6 +59,37 @@ export default function BrandConcierge() {
   const destinationParam = useSearchParams().get('destination');
   const chatAvailable = pathname !== '/demo/live' && adobeConnector.supportsBrand(brandIdForPath(pathname));
   const [initializeClient, setInitializeClient] = useState(chatAvailable);
+
+  const wasGranted = useRef(consent === 'granted');
+  useEffect(() => {
+    const runtime = getAaaRuntime();
+    return runtime.subscribe(() => {
+      if (!runtime.isEnabled()) visitorBriefStore.clear();
+    });
+  }, []);
+
+  useEffect(() => {
+    const lost = wasGranted.current && consent !== 'granted';
+    wasGranted.current = consent === 'granted';
+    if (!aaa.enabled) {
+      visitorBriefStore.clear();
+      setSuggestion(null);
+      setCopyStatus('');
+    }
+    // Revocation resets SDK-owned examples, accepting loss of the visible transcript.
+    if (!lost) return;
+    const client = clientRef.current;
+    if (!client) return;
+    const sequence = ++openSequence.current;
+    client.cancel();
+    if (isOpenRef.current) setStatus('loading');
+    void client.resetWelcome(defaultConciergeWelcomeExamples()).then(() => {
+      if (clientRef.current === client && sequence === openSequence.current && isOpenRef.current) setStatus('ready');
+    }).catch(error => {
+      console.error('Unable to clear personalized welcome questions:', error);
+      if (clientRef.current === client && sequence === openSequence.current) setStatus('error');
+    });
+  }, [aaa.enabled, consent]);
 
   useEffect(() => {
     if (chatAvailable) setInitializeClient(true);
@@ -64,35 +117,53 @@ export default function BrandConcierge() {
       });
     }
 
+    let sdk: ReturnType<typeof startConsentGatedWebSdk> | undefined;
     async function initialize() {
       await loadScript(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/style-config-Nitin2adobe.js`);
       if (!active) return;
-      if (!window.alloy) {
+      // A Web SDK the host already installed is the host's: AAA never reconfigures it or changes its consent.
+      const hostOwned = typeof window.alloy === 'function' && !ownsAlloy;
+      if (!hostOwned) {
+        ownsAlloy = true;
         (window.__alloyNS = window.__alloyNS || []).push('alloy');
         const alloy: Window['alloy'] = (...args) => new Promise((resolve, reject) => {
           alloy.q!.push([resolve, reject, args]);
         });
         alloy.q = [];
         window.alloy = alloy;
+        await loadScript('https://cdn1.adoberesources.net/alloy/2.35.1/alloy.min.js');
+        if (!active) return;
       }
-      await loadScript('https://cdn1.adoberesources.net/alloy/2.35.1/alloy.min.js');
-      if (!active) return;
       await loadScript('https://experience.adobe.net/solutions/experience-platform-brand-concierge-web-agent/static-assets/main.js');
       if (!active) return;
-      await window.alloy('configure', {
-        defaultConsent: 'in',
-        edgeDomain: 'edge.adobedc.net',
-        edgeBasePath: 'ee',
-        datastreamId: '1ccf8a78-69d5-40e7-a44a-a02edc1631a0',
-        orgId: 'B4A122FD69126FF30A495FB9@AdobeOrg',
-        debugEnabled: true,
-        idMigrationEnabled: false,
-        thirdPartyCookiesEnabled: false,
-        prehidingStyle: '.personalization-container { opacity: 0 !important }',
-        conversation: { region: 'va7' },
+      sdk = startConsentGatedWebSdk({
+        alloy: (command, options) => window.alloy(command, options),
+        hostOwned,
+        authority: getConsentAuthority(),
+        configuration: {
+          edgeDomain: 'edge.adobedc.net',
+          edgeBasePath: 'ee',
+          datastreamId: '1ccf8a78-69d5-40e7-a44a-a02edc1631a0',
+          orgId: 'B4A122FD69126FF30A495FB9@AdobeOrg',
+          debugEnabled: true,
+          idMigrationEnabled: false,
+          thirdPartyCookiesEnabled: false,
+          prehidingStyle: '.personalization-container { opacity: 0 !important }',
+          conversation: { region: 'va7' },
+          ...(process.env.NEXT_PUBLIC_AAA_AMBIENT_CONTEXT === 'off' ? {} : {
+            onBeforeEventSend: createAmbientContextHook(() => {
+              const availability = getAaaRuntime().get();
+              const journey = getCanonicalJourney();
+              const page = getCurrentPage();
+              const summary = availability.enabled && journey && page && journey.page.pageType === 'comparison'
+                && journey.page.pageInstanceId === page.pageInstanceId && journey.page.pageRevision === page.pageRevision
+                ? comparisonSummary(comparisonContext(journey, availability.active.profile, getComparisonSelection() ?? [])) : undefined;
+              return readAmbientPage(document, window.location, summary);
+            }, process.env.NEXT_PUBLIC_AAA_CONTEXT_MARKER, undefined, isAaaEnabled, readConciergeJourneyContext),
+          }),
+        },
       });
-      if (!active) return;
-      await window.alloy('sendEvent', {});
+      await sdk.ready;
     }
 
     const ready = initialize();
@@ -104,15 +175,16 @@ export default function BrandConcierge() {
         const observer = observerRef.current;
         if (observer?.sessionId === getSessionId()) observer.router.receive(event);
       },
-      bootstrap: (onEvent, question, examples) => window.adobe.concierge.bootstrap({
+      bootstrap: (onEvent, question, examples, exactExamples) => window.adobe.concierge.bootstrap({
         instanceName: 'alloy',
-        stylingConfigurations: withConciergeSuggestion(window.styleConfiguration, question, examples),
+        stylingConfigurations: withConciergeSuggestion(window.styleConfiguration, question, examples, exactExamples),
         selector: '#brand-concierge-mount',
         onEvent,
       }),
       canOpen: (_initialMessage, automatic) => {
         if (!active || !isOpenRef.current || window.location.pathname === '/demo/live' || !adobeConnector.supportsBrand(brandIdForPath(window.location.pathname))) return false;
         if (!automatic) return true;
+        if (!isAaaEnabled()) return false;
         const events = getEvents().filter(event => event.sessionId === getSessionId());
         return !isHiddenConciergeRoute(window.location.pathname) && !isForwardProgress(buildJourneyContext(events));
       },
@@ -125,6 +197,7 @@ export default function BrandConcierge() {
     });
     return () => {
       active = false;
+      sdk?.dispose();
       client.dispose();
       if (clientRef.current === client) clientRef.current = null;
       scripts.forEach((script) => script.remove());
@@ -132,11 +205,15 @@ export default function BrandConcierge() {
   }, [initializeClient]);
 
   const openChat = async (options: ConciergeOpenOptions = {}): Promise<ConciergeOpenResult> => {
+    if ((options.automatic || options.starterResult) && !isAaaEnabled()) return { status: 'cancelled' };
+    if (options.stillEligible && !options.stillEligible()) return { status: 'cancelled' };
     const sequence = ++openSequence.current;
     const { signal, activationId } = options;
     const sessionId = getSessionId();
-    const context = manualConciergeSuggestion(getEvents().filter(event => event.sessionId === sessionId), window.location.pathname, window.location.search, getComparisonSlugs());
-    const initialMessage = options.initialMessage ?? context?.initialMessage;
+    const context = isAaaEnabled() ? manualConciergeSuggestion(getEvents().filter(event => event.sessionId === sessionId), window.location.pathname, window.location.search, getComparisonSlugs()) : undefined;
+    const initialMessage = options.starterResult
+      ? options.starterResult.starters.find(starter => starter.role === 'primary')?.text
+      : options.initialMessage ?? context?.initialMessage;
     if (signal?.aborted) return { status: 'cancelled' };
     setSuggestion(initialMessage ? { ...context, ...options, initialMessage } : null);
     setCopyStatus('');
@@ -163,8 +240,11 @@ export default function BrandConcierge() {
     }
     setStatus('loading');
     try {
-      const result = await client.open(initialMessage, signal, options.automatic === true, context?.welcomeExamples.length ? context.welcomeExamples : defaultConciergeWelcomeExamples());
-      if (clientRef.current !== client || sequence !== openSequence.current) return { status: 'cancelled' };
+      const examples = options.starterResult ? options.starterResult.starters.map(starter => starter.text) : context ? context.welcomeExamples : defaultConciergeWelcomeExamples();
+      const result = await client.open(initialMessage, signal, !options.starterResult && options.automatic === true, examples, options.stillEligible, !!options.starterResult);
+      if (clientRef.current !== client || sequence !== openSequence.current) {
+        return { status: 'cancelled' };
+      }
       if (result.status !== 'cancelled') setStatus('ready');
       else {
         isOpenRef.current = false;
@@ -206,6 +286,7 @@ export default function BrandConcierge() {
       });
     };
     const onClose = () => {
+      visitorBriefStore.clear();
       openSequence.current++;
       clientRef.current?.cancel();
       isOpenRef.current = false;
@@ -223,6 +304,7 @@ export default function BrandConcierge() {
 
   useEffect(() => {
     if (!chatAvailable) {
+      visitorBriefStore.clear();
       clientRef.current?.cancel();
       isOpenRef.current = false;
       setIsOpen(false);
@@ -279,8 +361,7 @@ export default function BrandConcierge() {
         inert={!isOpen || !chatAvailable}
         tabIndex={-1}
       >
-        {suggestion?.initialMessage && <div className="brandConciergeContext">
-          <strong>Suggested by Wanderly, based on your browsing</strong>
+        {aaa.enabled && suggestion?.initialMessage && <div className="brandConciergeContext">
           <p>{process.env.NEXT_PUBLIC_BC_LEGACY_AUTO_SUBMIT === 'true' && suggestion.automatic ? 'Experimental mode: Wanderly may submit this browsing-based question automatically. It was not typed by you.' : suggestion.explanation ?? 'You can choose this suggested question or ask something else. It was not typed by you.'}</p>
           <p>{suggestion.initialMessage}</p>
           <button type="button" className="btn ghost" onClick={async () => {

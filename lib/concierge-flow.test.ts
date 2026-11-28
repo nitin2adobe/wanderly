@@ -52,7 +52,7 @@ test('journey C (respectful adaptation): a dismissed invitation is not repeated'
     ['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['DESTINATION_VIEW', 'bali'], ['COMPARE_VIEW'], ['DESTINATION_VIEW', 'maldives'],
   ], session);
   assert.equal(policy.allowed, false);
-  assert.equal(policy.rule, 'TYPE_ALREADY_HANDLED');
+  assert.equal(policy.rule, 'REPEATED_DISMISSALS');
 });
 
 test('the same engine drives a different entity pair end to end', () => {

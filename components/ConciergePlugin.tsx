@@ -1,219 +1,358 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { assistanceCopy } from '@/lib/assistance-copy';
-import { evaluatePolicy, hasPendingInvitation, isForwardProgress } from '@/lib/assistance-policy';
-import { conciergeOpeningMessage } from '@/lib/concierge-message';
-import { conciergePageDestination, contextualHandoff } from '@/lib/concierge-context';
-import { getComparisonSlugs } from '@/components/DestinationComparison';
-import { buildHandoff, validateHandoff, type ConciergeHandoff } from '@/lib/concierge-handoff';
+import { useAaaAvailability } from '@/components/AaaConsent';
+import { createActivationController, recordActivationTrace, type ActivationProvider, type PreparedNudge } from '@/lib/aaa-activation';
+import { adobeConnector, CONCIERGE_CLOSE_EVENT, isHiddenConciergeRoute, type ConciergeConnector } from '@/lib/concierge-connector';
 import { EVENT_UPDATED } from '@/lib/events';
-import { buildJourneyContext } from '@/lib/journey-context';
-import { getActivationMode, ACTIVATION_MODE_CHANGED } from '@/lib/activation-mode';
-import { proposeAssistance } from '@/lib/activation-proposal';
-import { getPolicyOptions, POLICY_SETTINGS_CHANGED } from '@/lib/policy-settings';
-import { brandIdForPath, getBrandConfig } from '@/lib/brand-config';
-import { deriveMemory } from '@/lib/assistance-memory';
-import { getEvents, getSessionId, track } from '@/lib/tracking';
-import { adobeConnector, CONCIERGE_CLOSE_EVENT, isHiddenConciergeRoute as isHiddenRoute, type ConciergeConnector } from '@/lib/concierge-connector';
+import { getAaaRuntime } from '@/lib/aaa-runtime';
+import { track } from '@/lib/tracking';
+import { wanderlyActivation } from '@/sites/wanderly/activation';
+import { getCanonicalJourney, getCurrentMoment, evaluateCurrentSuppression, getComparisonSelection, getNudgeExposureCount, NUDGE_SETTINGS_CHANGED } from '@/sites/wanderly/aaa';
+import { visitorBriefIsFresh, visitorBriefStore } from '@/lib/aaa-visitor-brief';
+import { COMPARISON_SNAPSHOT_REQUEST, comparisonRequest, type ComparisonSnapshot } from '@/lib/aaa-comparison';
+import { readAmbientPage } from '@/lib/ambient-context';
+import { nudgeWhy } from '@/lib/aaa-nudge-copy';
+import { provenanceLabel } from '@/lib/aaa-explain-labels';
+import { comparisonContext, comparisonSummary, validateComparisonStarter } from '@/sites/wanderly/comparison';
+import { createDecisionPoints, isRevisit, type DecisionPoint } from '@/lib/aaa-decision-points';
+import { createTimingController } from '@/lib/aaa-timing';
+import { readTimingSequence, saveTimingSequence } from '@/lib/aaa-timing-budget';
 
-const EVALUATION_DELAY_MS = 1200;
-function sessionEvents() {
-  const sid = getSessionId();
-  return { sid, events: getEvents().filter(e => e.sessionId === sid) };
-}
+const agentTiming = process.env.NEXT_PUBLIC_AAA_TIMING === 'agent';
 
-export default function ConciergePlugin({ connector = adobeConnector, catalogVersion }: { connector?: ConciergeConnector; catalogVersion?: string }) {
+export default function ConciergePlugin({
+  connector = adobeConnector, provider = wanderlyActivation, catalogVersion,
+}: { connector?: ConciergeConnector; provider?: ActivationProvider; catalogVersion?: string }) {
+  const aaa = useAaaAvailability();
   const pathname = usePathname();
-  const [invitation, setInvitation] = useState<ConciergeHandoff | null>(null);
-  const [failedInvitation, setFailedInvitation] = useState<ConciergeHandoff | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const invitationRef = useRef(invitation);
-  const automaticHandoff = useRef<{ handoff: ConciergeHandoff; activationId: string } | null>(null);
-  const activeRequest = useRef<{ controller: AbortController; sessionId: string; activationId: string; brand: string; activationMode?: ReturnType<typeof getActivationMode> } | null>(null);
+  const controller = useMemo(() => createActivationController(provider), [provider]);
+  const timing = useMemo(() => createTimingController(provider), [provider]);
+  const [nudge, setNudge] = useState<PreparedNudge>();
   const [opening, setOpening] = useState(false);
-  invitationRef.current = invitation;
-
-  const triggerChat = useCallback(async (handoff: ConciergeHandoff, accepted = false, source = 'unknown') => {
-    if (activeRequest.current) return;
-    const events = sessionEvents().events;
-    const destination = conciergePageDestination(window.location.pathname, window.location.search);
-    handoff = contextualHandoff(handoff, events, getComparisonSlugs(), destination?.slug);
-    const initialMessage = conciergeOpeningMessage(handoff, destination ? [destination.name] : buildJourneyContext(events).destinationsViewed);
-    const request = { controller: new AbortController(), sessionId: handoff.sessionId, activationId: crypto.randomUUID(), brand: handoff.brand, activationMode: accepted ? undefined : getActivationMode() };
-    activeRequest.current = request;
-    setOpening(true);
-    track('ASSISTANCE_REQUESTED', window.location.pathname, undefined, { assistanceType: handoff.intent, activationId: request.activationId, handoff, source, catalogVersion });
-    try {
-      const result = await connector.open(handoff, {
-        initialMessage, signal: request.controller.signal, activationId: request.activationId, automatic: !accepted,
-        explanation: 'A suggested question from your current trip choices. Choose it in chat, or copy it into an existing conversation.',
-      });
-      if (getSessionId() !== handoff.sessionId) return;
-      const metadata = { assistanceType: handoff.intent, activationId: request.activationId, handoff, source, catalogVersion };
-      if (result.status === 'cancelled' || request.controller.signal.aborted) {
-        track('ASSISTANCE_CANCELLED', window.location.pathname, undefined, { ...metadata, reason: 'obsolete-or-closed' });
-        setInvitation(null);
-        return;
-      }
-      track('ASSISTANCE_SHOWN', window.location.pathname, undefined, metadata);
-      track('ASSISTANCE_OPENED', window.location.pathname, undefined, { ...metadata, delivery: result.status, source: accepted ? 'visitor-retry' : 'automatic' });
-      if (result.status === 'submitted') track('ASSISTANCE_TRIGGERED', window.location.pathname, undefined, metadata);
-      if (accepted) track('ASSISTANCE_ACCEPTED', window.location.pathname, undefined, metadata);
-      automaticHandoff.current = { handoff, activationId: request.activationId };
-      setInvitation(null);
-      setFailedInvitation(null);
-    } catch (error) {
-      console.error('Unable to open Brand Concierge automatically:', error);
-      if (getSessionId() !== handoff.sessionId) return;
-      track('ASSISTANCE_FAILED', window.location.pathname, undefined, { assistanceType: handoff.intent, activationId: request.activationId, phase: 'opening', reason: 'acknowledgement-failed' });
-      setInvitation(handoff);
-      setFailedInvitation(handoff);
-    } finally {
-      if (activeRequest.current === request) activeRequest.current = null;
-      setOpening(false);
-    }
-  }, [connector, catalogVersion]);
-
-  const evaluate = useCallback(async () => {
-    // Never create (or count) an invitation the visitor cannot see.
-    if (isHiddenRoute(window.location.pathname)) return;
-    const { sid, events } = sessionEvents();
-    if (!sid) return;
-    if (activeRequest.current) return;
-    const pending = hasPendingInvitation(events);
-    const current = invitationRef.current;
-
-    if (current && current.sessionId !== sid) {
-      invitationRef.current = null;
-      setInvitation(null);
-      setFailedInvitation(null);
-    } else if (current) {
-      // Withdraw on forward progress or a reset session. This check is source-independent: an invitation proposed by
-      // the AI must not be judged against the rules' decision.
-      if (isForwardProgress(buildJourneyContext(events))) {
-        track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: current.intent, reason: 'withdrawn' });
-        setInvitation(null);
-      }
-      return;
-    }
-
-    if (pending) {
-      // Restore an invitation that survived a page reload.
-      const last = [...events].reverse().find(e => e.eventType === 'ASSISTANCE_SHOWN' || e.eventType === 'ASSISTANCE_REQUESTED');
-      const restored = validateHandoff(last?.metadata?.handoff);
-      if (restored.valid) {
-        // A reload cannot establish whether the SDK submitted. Offer a manual continuation, never replay automatically.
-        if (last?.eventType === 'ASSISTANCE_REQUESTED') track('ASSISTANCE_CANCELLED', window.location.pathname, undefined, { assistanceType: restored.value.intent, activationId: last.metadata?.activationId, reason: 'interrupted-request' });
-        setInvitation(restored.value);
-      }
-      else track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: last?.metadata?.assistanceType, reason: 'unrestorable' });
-      return;
-    }
-
-    const context = buildJourneyContext(events);
-    const mode = getActivationMode();
-    const { decision, source } = await proposeAssistance(context, mode === 'ai');
-    // The journey may have moved on while the reasoner was thinking; a newer evaluation is already scheduled.
-    const latest = sessionEvents();
-    if (isHiddenRoute(window.location.pathname) || getActivationMode() !== mode || latest.sid !== sid || JSON.stringify(buildJourneyContext(latest.events)) !== JSON.stringify(context) || invitationRef.current || hasPendingInvitation(latest.events)) return;
-    const policy = evaluatePolicy(decision, context, latest.events, new Date(), getPolicyOptions());
-    track('ASSISTANCE_EVALUATED', window.location.pathname, undefined, { decision, source, activationMode: mode, contextKey: JSON.stringify(context), policy });
-    if (!policy.allowed) return;
-    const memory = deriveMemory(latest.events);
-    const handoff = contextualHandoff(buildHandoff(context, decision, sid, new Date(), brandIdForPath(window.location.pathname), memory.preferredPriority ? { priority: memory.preferredPriority } : {}), latest.events, getComparisonSlugs());
-    if (connector.supportsBrand(handoff.brand)) void triggerChat(handoff, false, source);
-    else {
-      track('ASSISTANCE_SHOWN', window.location.pathname, undefined, { assistanceType: handoff.intent, handoff, source });
-      setInvitation(handoff);
-    }
-  }, [connector, triggerChat]);
+  const [failed, setFailed] = useState(false);
+  const current = useRef(nudge);
+  const openingRef = useRef(false);
+  const request = useRef<AbortController | undefined>(undefined);
+  const balloon = useRef<HTMLElement>(null);
+  const attempted = useRef('');
+  const exposed = useRef<PreparedNudge | undefined>(undefined);
+  const attemptPrepareRef = useRef<() => Promise<void>>(async () => {});
+  current.current = nudge;
 
   useEffect(() => {
-    const schedule = (event?: Event) => {
-      const request = activeRequest.current;
-      if (request && (getSessionId() !== request.sessionId || isHiddenRoute(window.location.pathname) || brandIdForPath(window.location.pathname) !== request.brand || (request.activationMode !== undefined && getActivationMode() !== request.activationMode) || isForwardProgress(buildJourneyContext(sessionEvents().events)))) request.controller.abort();
-      const detail = event instanceof CustomEvent ? event.detail : undefined;
-      if (typeof detail?.eventType === 'string' && detail.eventType.startsWith('ASSISTANCE_') && detail.eventType !== 'ASSISTANCE_PREFERENCE') return;
-      clearTimeout(timer.current);
-      timer.current = setTimeout(evaluate, EVALUATION_DELAY_MS);
+    const capture = (event: Event) => {
+      if (!('detail' in event) || !event.detail || typeof event.detail !== 'object'
+        || !('respond' in event.detail) || typeof event.detail.respond !== 'function') return;
+      try {
+        if (window.parent === window || window.parent.location.origin !== window.location.origin
+          || window.parent.location.pathname !== '/demo/compare') return;
+        const availability = getAaaRuntime().get();
+        const journey = getCanonicalJourney();
+        const moment = getCurrentMoment();
+        const suppression = evaluateCurrentSuppression();
+        const request = comparisonRequest({
+          journey, profile: availability.enabled ? availability.active.profile : undefined, moment, suppression,
+        }, crypto.randomUUID(), new Date().toISOString());
+        const selection = getComparisonSelection() ?? [];
+        const summary = availability.enabled && journey && journey.page.pageType === 'comparison'
+          ? comparisonSummary(comparisonContext(journey, availability.active.profile, selection)) : undefined;
+        const snapshot: ComparisonSnapshot = {
+          ...(request ? { request } : {}),
+          page: readAmbientPage(document, window.location, summary),
+          selection,
+        };
+        event.detail.respond(snapshot);
+      } catch (error) {
+        console.error('[aaa-comparison] snapshot.failed', error);
+      }
     };
-    schedule();
-    window.addEventListener(EVENT_UPDATED, schedule);
-    window.addEventListener('storage', schedule);
-    window.addEventListener(ACTIVATION_MODE_CHANGED, schedule);
-    window.addEventListener(POLICY_SETTINGS_CHANGED, schedule);
-    return () => {
-      clearTimeout(timer.current);
-      window.removeEventListener(EVENT_UPDATED, schedule);
-      window.removeEventListener('storage', schedule);
-      window.removeEventListener(ACTIVATION_MODE_CHANGED, schedule);
-      window.removeEventListener(POLICY_SETTINGS_CHANGED, schedule);
-    };
-  }, [evaluate, pathname]);
-
-  useEffect(() => () => activeRequest.current?.controller.abort(), []);
-
-  useEffect(() => {
-    const onClose = () => {
-      activeRequest.current?.controller.abort();
-      const current = automaticHandoff.current;
-      automaticHandoff.current = null;
-      if (!current || current.handoff.sessionId !== getSessionId()) return;
-      track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: current.handoff.intent, activationId: current.activationId, reason: 'visitor' });
-    };
-    window.addEventListener(CONCIERGE_CLOSE_EVENT, onClose);
-    return () => window.removeEventListener(CONCIERGE_CLOSE_EVENT, onClose);
+    window.addEventListener(COMPARISON_SNAPSHOT_REQUEST, capture);
+    return () => window.removeEventListener(COMPARISON_SNAPSHOT_REQUEST, capture);
   }, []);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const current = invitationRef.current;
-      // Escape must not silently dismiss an invitation that is hidden on this route.
-      if (event.key !== 'Escape' || !current || isHiddenRoute(window.location.pathname)) return;
-      track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: current.intent, reason: 'visitor' });
-      setInvitation(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  if (isHiddenRoute(pathname)) return null;
-
-  const accept = () => {
-    if (!invitation) return;
-    void triggerChat(invitation, true);
+  const clear = () => {
+    const focused = balloon.current?.contains(document.activeElement);
+    current.current = undefined;
+    setNudge(undefined);
+    if (focused) document.querySelector<HTMLButtonElement>('.brandConciergeLauncher')?.focus();
   };
   const dismiss = () => {
-    if (!invitation) return;
-    track('ASSISTANCE_DISMISSED', window.location.pathname, undefined, { assistanceType: invitation.intent, reason: 'visitor' });
-    setInvitation(null);
+    const prepared = current.current;
+    if (!prepared || openingRef.current) return;
+    clear();
+    attempted.current = '';
+    provider.recordDismissed();
+    recordActivationTrace(prepared.request.journey.sessionId, 'dismissed', { reasonCodes: ['activation.visitor_dismissed'] });
   };
 
-  const brand = invitation ? getBrandConfig(invitation.brand) : undefined;
-  const copy = invitation ? assistanceCopy(invitation.intent, invitation.entities, brand) : null;
-  const isCurrentBrand = invitation?.brand === brandIdForPath(pathname);
-  const chatAvailable = !!invitation && isCurrentBrand && connector.supportsBrand(invitation.brand);
-  return (
-    <>
-      {invitation && copy && (
-        <div className="conciergeBalloon" role="dialog" aria-label="Concierge suggestion">
-          <div className="conciergeBalloonHead"><span className="conciergeAvatar" aria-hidden="true">{(brand?.displayName ?? 'B').charAt(0)}</span><strong>{brand?.displayName ?? 'Brand'} concierge</strong></div>
-          <h3>{copy.headline}</h3>
-          <p>{chatAvailable ? `${copy.body} Share your question in the chat.` : isCurrentBrand ? `Live chat isn't configured for ${brand?.displayName ?? 'this brand'}.` : 'This suggestion is not available on this page.'}</p>
-          {invitation.observedSignals.length > 0 && (
-            <details className="conciergeWhy">
-              <summary>Why am I seeing this?</summary>
-              <ul>{invitation.observedSignals.map(signal => <li key={signal}>{signal}</li>)}</ul>
-            </details>
-          )}
-          <div className="conciergeActions">
-            {chatAvailable && <button className="btn" disabled={opening} onClick={accept}>{opening ? 'Opening chat...' : failedInvitation === invitation ? 'Retry opening chat' : copy.cta}</button>}
-            <button className="btn ghost" disabled={opening} onClick={dismiss}>{copy.dismiss}</button>
-          </div>
-          {failedInvitation === invitation && <p role="alert">Chat couldn't be opened. Try again or reload the page.</p>}
-        </div>
-      )}
-    </>
-  );
+  useLayoutEffect(() => {
+    if (!nudge || exposed.current === nudge || !balloon.current || !aaa.enabled || isHiddenConciergeRoute(pathname)) return;
+    if (!controller.isFresh(nudge, false)) { clear(); return; }
+    exposed.current = nudge;
+    const shown = provider.recordShown();
+    if (!shown.allowed) {
+      recordActivationTrace(nudge.request.journey.sessionId, 'suppressed', { suppressionReasons: [...shown.reasonCodes] });
+      clear();
+      return;
+    }
+    recordActivationTrace(nudge.request.journey.sessionId, 'shown', { reasonCodes: ['activation.nudge_shown'] });
+  }, [nudge, aaa.enabled, pathname, provider, controller]);
+
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attemptPrepare = async () => {
+      try { await provider.refresh?.(); }
+      catch (error) { console.error('[aaa-activation] settings.refresh_failed', error); return; }
+      if (!active || current.current || openingRef.current) return;
+      const snapshot = provider.read(false);
+      if (!snapshot?.allowed || !connector.supportsBrand(snapshot.profile.profileId)) return;
+      const key = JSON.stringify([snapshot.journey.sessionId, snapshot.journey.profileVersion, snapshot.journey.page, snapshot.journey.lastSeq, snapshot.momentRuleId]);
+      if (attempted.current === key) return;
+      attempted.current = key;
+      const prepared = await controller.prepare();
+      if (!active || !prepared || current.current || openingRef.current || !controller.isFresh(prepared, false)) return;
+      const result = validateComparisonStarter(prepared.response.result, comparisonContext(
+        prepared.request.journey, snapshot.profile, getComparisonSelection() ?? [],
+      ));
+      if (!result) return;
+      const named = { ...prepared, response: { ...prepared.response, result } };
+      if (named.response.visitorBrief) {
+        const identity = named.request.journey;
+        visitorBriefStore.set(named.response.visitorBrief.text, () => {
+          const availability = getAaaRuntime().get();
+          const journey = getCanonicalJourney();
+          return availability.enabled && !!journey
+            && journey.profileId === availability.active.profile.profileId
+            && journey.profileVersion === availability.active.profile.profileVersion
+            && visitorBriefIsFresh(identity, named.response.result.expiresAt, journey);
+        });
+      }
+      current.current = named;
+      setNudge(named);
+      setFailed(false);
+    };
+    attemptPrepareRef.current = attemptPrepare;
+    const schedule = () => {
+      if (!aaa.enabled || isHiddenConciergeRoute(window.location.pathname) || document.visibilityState === 'hidden') {
+        clearTimeout(timer);
+        timer = undefined;
+        controller.cancel();
+        request.current?.abort();
+        clear();
+        attempted.current = '';
+        return;
+      }
+      if (current.current) {
+        if (!controller.isFresh(current.current, true, openingRef.current)) {
+          request.current?.abort();
+          clear();
+        }
+        return;
+      }
+      if (openingRef.current || !connector.openStarters) return;
+      if (agentTiming) return;
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = undefined;
+        void attemptPrepare();
+      }, 1200);
+    };
+    const close = () => schedule();
+    const settingsChanged = () => { attempted.current = ''; schedule(); };
+    schedule();
+    window.addEventListener(EVENT_UPDATED, schedule);
+    window.addEventListener('aaa:changed', schedule);
+    window.addEventListener('focusin', schedule);
+    window.addEventListener('focusout', schedule);
+    document.addEventListener('visibilitychange', schedule);
+    window.addEventListener(CONCIERGE_CLOSE_EVENT, close);
+    window.addEventListener(NUDGE_SETTINGS_CHANGED, settingsChanged);
+    const unsubscribe = getAaaRuntime().subscribe(schedule);
+    const interval = setInterval(schedule, 2000);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      clearInterval(interval);
+      controller.cancel();
+      request.current?.abort();
+      unsubscribe();
+      window.removeEventListener(EVENT_UPDATED, schedule);
+      window.removeEventListener('aaa:changed', schedule);
+      window.removeEventListener('focusin', schedule);
+      window.removeEventListener('focusout', schedule);
+      document.removeEventListener('visibilitychange', schedule);
+      window.removeEventListener(CONCIERGE_CLOSE_EVENT, close);
+      window.removeEventListener(NUDGE_SETTINGS_CHANGED, settingsChanged);
+    };
+  }, [aaa.enabled, pathname, provider, connector, controller]);
+
+  useEffect(() => {
+    if (!agentTiming || !aaa.enabled) return;
+    let storage: Storage;
+    try { storage = window.sessionStorage; }
+    catch {
+      console.warn('[aaa-timing] budget.storage_unavailable');
+      return;
+    }
+    let active = true, syncing = false, preparing = false, session = '', page = '', lastSeq = 0;
+    let scheduler: ReturnType<typeof createDecisionPoints> | undefined;
+    const unavailable = () => isHiddenConciergeRoute(window.location.pathname)
+      || document.visibilityState === 'hidden' || !!current.current || openingRef.current || preparing
+      || !!document.querySelector('button[aria-label="Close Wanderly chat"]') || !connector.openStarters;
+    const sync = () => {
+      if (!active || syncing) return;
+      syncing = true;
+      try {
+        const journey = getCanonicalJourney();
+        if (!journey) { scheduler?.pause(); return; }
+        if (journey.sessionId !== session) {
+          scheduler?.stop();
+          session = journey.sessionId; page = ''; lastSeq = 0;
+          const initialSequence = readTimingSequence(storage, session);
+          if (initialSequence === undefined) {
+            scheduler = undefined;
+            console.warn('[aaa-timing] budget.storage_unavailable');
+            return;
+          }
+          scheduler = createDecisionPoints({
+            now: Date.now, setTimer: (fn, ms) => setTimeout(fn, ms),
+            clearTimer: timer => clearTimeout(timer as ReturnType<typeof setTimeout>),
+            initialSequence,
+            onPoint: point => {
+              if (!saveTimingSequence(storage, session, point.sequence)) {
+                console.warn('[aaa-timing] budget.storage_unavailable');
+                scheduler?.stop();
+                return;
+              }
+              void onPoint(point);
+            },
+          });
+        }
+        if (!scheduler) return;
+        scheduler!.visible(document.visibilityState !== 'hidden');
+        if (unavailable()) scheduler!.pause(); else scheduler!.resume();
+        if (journey.page.pageInstanceId !== page) {
+          page = journey.page.pageInstanceId; lastSeq = journey.lastSeq;
+          scheduler!.pageViewed(page, isRevisit(journey));
+        } else if (journey.lastSeq > lastSeq) {
+          lastSeq = journey.lastSeq;
+          scheduler!.activity(page, isRevisit(journey));
+        }
+      } finally { syncing = false; }
+    };
+    const onPoint = async (point: DecisionPoint) => {
+      if (!active || unavailable()) return;
+      try { await provider.refresh?.(); }
+      catch (error) { console.error('[aaa-activation] settings.refresh_failed', error); return; }
+      if (!active || unavailable()) return;
+      const count = getNudgeExposureCount();
+      if (count === undefined) return;
+      const entry = await timing.decide(point, count);
+      if (!active || !entry || unavailable() || provider.read(false)?.journey.page.pageInstanceId !== point.pageInstanceId) return;
+      if (entry.outcome === 'silent' && entry.judgments?.makingProgress === 'yes') scheduler?.standDown(point.pageInstanceId);
+      if (entry.outcome !== 'assist') return;
+      preparing = true;
+      scheduler?.pause();
+      try { await attemptPrepareRef.current(); }
+      finally { preparing = false; sync(); }
+    };
+    sync();
+    window.addEventListener(EVENT_UPDATED, sync);
+    window.addEventListener('aaa:changed', sync);
+    window.addEventListener('focusin', sync);
+    window.addEventListener('focusout', sync);
+    window.addEventListener(CONCIERGE_CLOSE_EVENT, sync);
+    document.addEventListener('visibilitychange', sync);
+    const unsubscribe = getAaaRuntime().subscribe(sync);
+    const interval = setInterval(sync, 2000);
+    return () => {
+      active = false;
+      scheduler?.stop();
+      clearInterval(interval);
+      unsubscribe();
+      window.removeEventListener(EVENT_UPDATED, sync);
+      window.removeEventListener('aaa:changed', sync);
+      window.removeEventListener('focusin', sync);
+      window.removeEventListener('focusout', sync);
+      window.removeEventListener(CONCIERGE_CLOSE_EVENT, sync);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [aaa.enabled, provider, connector, timing]);
+
+  const accept = async () => {
+    const prepared = current.current;
+    if (!prepared || openingRef.current || !connector.openStarters) return;
+    openingRef.current = true;
+    setOpening(true);
+    const eligible = await controller.isFreshForSend(prepared);
+    if (current.current !== prepared || !eligible) {
+      openingRef.current = false;
+      setOpening(false);
+      clear();
+      return;
+    }
+    const abort = new AbortController();
+    request.current = abort;
+    const activationId = crypto.randomUUID();
+    const metadata = { activationId, assistanceType: 'AAA_STARTERS', source: 'visitor', catalogVersion };
+    track('ASSISTANCE_REQUESTED', window.location.pathname, undefined, metadata);
+    try {
+      const result = await connector.openStarters(prepared.response.result, {
+        activationId, signal: abort.signal, automatic: false,
+        // Focus/chat suppression was checked at click. Once this visitor-requested opening begins,
+        // its own chat/focus must not invalidate it; identity, eligibility and expiry still apply.
+        stillEligible: () => controller.isFresh(prepared, true, true),
+        explanation: 'Choose a question in chat to send it, or type your own. Nothing has been sent for you.',
+      });
+      recordActivationTrace(prepared.request.journey.sessionId, 'opened', { reasonCodes: [`concierge.${result.status}`] });
+      if (result.status !== 'cancelled') {
+        track('ASSISTANCE_OPENED', window.location.pathname, undefined, { ...metadata, delivery: result.status });
+        track('ASSISTANCE_ACCEPTED', window.location.pathname, undefined, metadata);
+      } else {
+        track('ASSISTANCE_CANCELLED', window.location.pathname, undefined, { ...metadata, reason: 'activation.ineligible' });
+      }
+      clear();
+    } catch (error) {
+      console.error('[aaa-activation] concierge.open_failed', error);
+      recordActivationTrace(prepared.request.journey.sessionId, 'failed', { reasonCodes: ['concierge.open_failed'] });
+      track('ASSISTANCE_FAILED', window.location.pathname, undefined, { ...metadata, phase: 'opening', reason: 'concierge.open_failed' });
+      // No automatic replay, including after an uncertain SDK acknowledgement.
+      clear();
+      setFailed(true);
+    } finally {
+      if (request.current === abort) request.current = undefined;
+      openingRef.current = false;
+      setOpening(false);
+    }
+  };
+
+  if (!aaa.enabled || isHiddenConciergeRoute(pathname)) return null;
+  const primary = nudge?.response.result.starters.find(starter => starter.role === 'primary');
+  return <>
+    <div className="aaaLiveStatus" role="status" aria-live="polite" aria-atomic="true">
+      {nudge ? 'Optional help is available. You can open chat or dismiss the suggestion.' : failed ? 'Suggested help could not open. You can still use the chat button.' : ''}
+    </div>
+    {failed && <aside className="conciergeBalloon aaaNudge" role="alert">
+      <p>Suggested help could not open. Use the chat button to continue manually; no question will be resent.</p>
+      <button type="button" className="btn ghost" onClick={() => setFailed(false)}>Dismiss</button>
+    </aside>}
+    {nudge && primary && <aside ref={balloon} className="conciergeBalloon aaaNudge" aria-labelledby="aaa-nudge-title" aria-busy={opening} onKeyDown={event => {
+      if (event.key === 'Escape' && !openingRef.current) { event.stopPropagation(); dismiss(); }
+    }}>
+      <h3 id="aaa-nudge-title">{nudge.response.headline?.text ?? 'A little help choosing?'}</h3>
+      <p>{primary.text}</p>
+      {nudge.response.starterProvenance?.find(entry => entry.starterId === primary.starterId)?.source === 'written'
+        && <small className="agentEyeBadge">{provenanceLabel('written')}</small>}
+      <details className="conciergeWhy">
+        <summary>Why am I seeing this?</summary>
+        <p>{nudgeWhy(nudge.response.why?.text)}</p>
+      </details>
+      <div className="conciergeActions">
+        <button type="button" className="btn" disabled={opening} onClick={() => void accept()}>{opening ? 'Opening chat...' : 'Open chat'}</button>
+        <button type="button" className="btn ghost" disabled={opening} onClick={dismiss}>Not now</button>
+      </div>
+    </aside>}
+  </>;
 }

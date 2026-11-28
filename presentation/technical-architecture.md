@@ -1,5 +1,9 @@
 # Wanderly Adaptive Assistance: Current Technical Architecture
 
+This document and its diagram describe the main-branch implementation from
+November 2026. The `aaa-ai-showcase` branch also includes the AAA integration,
+which is not represented in this snapshot.
+
 Updated 24 November 2026 against the implemented POC. The overview below shows
 existing components, not the previously proposed server-authoritative pilot.
 The [landscape PNG](technical-architecture.png) is the 2560 x 1440 (16:9)

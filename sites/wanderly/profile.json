@@ -1,0 +1,934 @@
+{
+  "schemaVersion": "1.0.0",
+  "profileId": "wanderly",
+  "profileVersion": "1.6.0",
+  "tenantId": "tenant-wanderly-demo",
+  "displayName": "Wanderly fictional demo",
+  "locales": {
+    "default": "en-US",
+    "supported": [
+      "en-US"
+    ]
+  },
+  "taxonomy": {
+    "pageTypes": [
+      {
+        "id": "home",
+        "transactional": false
+      },
+      {
+        "id": "destination-list",
+        "transactional": false
+      },
+      {
+        "id": "destination-detail",
+        "label": {
+          "en-US": "destination details"
+        },
+        "transactional": false
+      },
+      {
+        "id": "package-list",
+        "label": {
+          "en-US": "package options"
+        },
+        "transactional": false
+      },
+      {
+        "id": "package-detail",
+        "label": {
+          "en-US": "package details"
+        },
+        "transactional": false
+      },
+      {
+        "id": "comparison",
+        "transactional": false
+      },
+      {
+        "id": "practical-info",
+        "label": {
+          "en-US": "travel planning"
+        },
+        "transactional": false
+      },
+      {
+        "id": "booking",
+        "transactional": true
+      },
+      {
+        "id": "other",
+        "transactional": false
+      }
+    ],
+    "entityTypes": [
+      {
+        "id": "destination"
+      },
+      {
+        "id": "package"
+      }
+    ],
+    "funnelStages": [],
+    "topics": [
+      {
+        "id": "practical-planning",
+        "label": {
+          "en-US": "travel planning"
+        }
+      },
+      {
+        "id": "sample-price",
+        "label": {
+          "en-US": "package price"
+        }
+      }
+    ]
+  },
+  "facets": [
+    {
+      "id": "pace",
+      "label": {
+        "en-US": "trip pace"
+      },
+      "values": [
+        {
+          "id": "relaxed",
+          "label": {
+            "en-US": "relaxed"
+          }
+        },
+        {
+          "id": "balanced",
+          "label": {
+            "en-US": "balanced"
+          }
+        },
+        {
+          "id": "active",
+          "label": {
+            "en-US": "active"
+          }
+        },
+        {
+          "id": "any",
+          "label": {
+            "en-US": "any pace"
+          }
+        }
+      ]
+    },
+    {
+      "id": "priority",
+      "values": [
+        {
+          "id": "budget"
+        },
+        {
+          "id": "activities"
+        },
+        {
+          "id": "trip-length"
+        }
+      ]
+    }
+  ],
+  "signalMap": [
+    {
+      "id": "page",
+      "source": "track",
+      "match": "page.viewed",
+      "kind": "page.viewed",
+      "provenance": "explicit"
+    },
+    {
+      "id": "destination",
+      "source": "track",
+      "match": "destination.viewed",
+      "kind": "entity.viewed",
+      "provenance": "explicit",
+      "fields": {
+        "entityIds": "entityIds",
+        "entityType": {
+          "value": "destination"
+        }
+      }
+    },
+    {
+      "id": "package",
+      "source": "track",
+      "match": "package.viewed",
+      "kind": "entity.viewed",
+      "provenance": "explicit",
+      "fields": {
+        "entityIds": "entityIds",
+        "entityType": {
+          "value": "package"
+        }
+      }
+    },
+    {
+      "id": "compare",
+      "source": "track",
+      "match": "entities.compared",
+      "kind": "entity.compared",
+      "provenance": "explicit",
+      "fields": {
+        "entityIds": "entityIds",
+        "entityType": "entityType"
+      }
+    },
+    {
+      "id": "info",
+      "source": "track",
+      "match": "info.sought",
+      "kind": "info.sought",
+      "provenance": "explicit",
+      "fields": {
+        "entityIds": "entityIds",
+        "topicId": "topicId"
+      }
+    },
+    {
+      "id": "facet",
+      "source": "track",
+      "match": "facet.selected",
+      "kind": "facet.selected",
+      "provenance": "explicit",
+      "fields": {
+        "facetId": "facetId",
+        "valueIds": "valueIds"
+      }
+    },
+    {
+      "id": "flow-start",
+      "source": "track",
+      "match": "booking.started",
+      "kind": "transaction.step",
+      "provenance": "explicit",
+      "fields": {
+        "phase": {
+          "value": "start"
+        },
+        "flowId": "flowId"
+      }
+    },
+    {
+      "id": "flow-step",
+      "source": "track",
+      "match": "booking.step",
+      "kind": "transaction.step",
+      "provenance": "explicit",
+      "fields": {
+        "phase": {
+          "value": "step"
+        },
+        "flowId": "flowId"
+      }
+    },
+    {
+      "id": "flow-complete",
+      "source": "track",
+      "match": "booking.confirmed-complete",
+      "kind": "transaction.step",
+      "provenance": "explicit",
+      "fields": {
+        "phase": {
+          "value": "complete"
+        },
+        "flowId": "flowId"
+      }
+    },
+    {
+      "id": "flow-cancel",
+      "source": "track",
+      "match": "booking.confirmed-cancel",
+      "kind": "transaction.step",
+      "provenance": "explicit",
+      "fields": {
+        "phase": {
+          "value": "cancel"
+        },
+        "flowId": "flowId"
+      }
+    },
+    {
+      "id": "attribute-entity",
+      "source": "data-attribute",
+      "match": "entity.viewed",
+      "kind": "entity.viewed",
+      "provenance": "explicit",
+      "fields": {
+        "entityIds": "entityIds",
+        "entityType": "entityType"
+      }
+    },
+    {
+      "id": "attribute-info",
+      "source": "data-attribute",
+      "match": "info.sought",
+      "kind": "info.sought",
+      "provenance": "explicit",
+      "fields": {
+        "topicId": "topicId"
+      }
+    },
+    {
+      "id": "attribute-facet",
+      "source": "data-attribute",
+      "match": "facet.selected",
+      "kind": "facet.selected",
+      "provenance": "explicit",
+      "fields": {
+        "facetId": "facetId",
+        "valueIds": "valueIds"
+      }
+    },
+    {
+      "id": "acdl-compare",
+      "source": "acdl",
+      "match": "compare.view",
+      "kind": "entity.compared",
+      "provenance": "explicit",
+      "fields": {
+        "entityIds": "eventInfo.ids",
+        "entityType": "eventInfo.type"
+      }
+    },
+    {
+      "id": "acdl-info",
+      "source": "acdl",
+      "match": "info.view",
+      "kind": "info.sought",
+      "provenance": "explicit",
+      "fields": {
+        "topicId": "eventInfo.topicId"
+      }
+    }
+  ],
+  "momentRules": {
+    "derivedStates": {
+      "hesitation": {
+        "params": {
+          "minCompareCount": 1
+        }
+      },
+      "inProgress": {
+        "transactionPageTypes": [
+          "booking"
+        ]
+      }
+    },
+    "exposureBudget": {
+      "maxNudgesPerSession": 2,
+      "minNudgeIntervalMs": 600000
+    },
+    "rules": [
+      {
+        "id": "compare-destinations",
+        "when": {
+          "pageTypes": [
+            "comparison"
+          ],
+          "derivedActive": [
+            "hesitation"
+          ],
+          "signalKinds": [
+            "entity.compared"
+          ]
+        },
+        "decision": "ASSIST",
+        "playbookIds": [
+          "destination-compare",
+          "cost-focus",
+          "pace-fit"
+        ]
+      },
+      {
+        "id": "travel-information",
+        "when": {
+          "pageTypes": [
+            "practical-info"
+          ],
+          "signalKinds": [
+            "info.sought"
+          ]
+        },
+        "decision": "ASSIST",
+        "playbookIds": [
+          "travel-planning"
+        ]
+      },
+      {
+        "id": "filter-packages",
+        "when": {
+          "pageTypes": [
+            "package-list"
+          ],
+          "signalKinds": [
+            "facet.selected"
+          ]
+        },
+        "decision": "ASSIST",
+        "playbookIds": [
+          "package-filter-help"
+        ]
+      },
+      {
+        "id": "view-package",
+        "when": {
+          "pageTypes": [
+            "package-detail"
+          ],
+          "signalKinds": [
+            "entity.viewed"
+          ]
+        },
+        "decision": "ASSIST",
+        "playbookIds": [
+          "package-detail-help"
+        ]
+      },
+      {
+        "id": "view-destination",
+        "when": {
+          "pageTypes": [
+            "destination-detail"
+          ],
+          "signalKinds": [
+            "entity.viewed"
+          ]
+        },
+        "decision": "ASSIST",
+        "playbookIds": [
+          "destination-detail-help"
+        ]
+      },
+      {
+        "id": "unresolved-exploration",
+        "when": {
+          "pageTypes": [
+            "destination-detail",
+            "package-detail",
+            "package-list",
+            "comparison",
+            "practical-info"
+          ],
+          "derivedActive": [
+            "hesitation"
+          ]
+        },
+        "decision": "ASSIST",
+        "playbookIds": [
+          "destination-compare",
+          "planning-help",
+          "sample-package"
+        ]
+      }
+    ]
+  },
+  "playbooks": [
+    {
+      "id": "destination-compare",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-destination-bali",
+        "ev-destination-maldives",
+        "ev-destination-japan",
+        "ev-destination-switzerland",
+        "ev-destination-thailand",
+        "ev-destination-portugal"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "comparison"
+        ],
+        "entityTypes": [
+          "destination"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-destination-compare",
+          "role": "primary",
+          "text": {
+            "en-US": "Can you help me compare these destinations?"
+          }
+        },
+        {
+          "templateId": "t-destination-tradeoffs",
+          "role": "followup",
+          "text": {
+            "en-US": "What are the main trade-offs between these destinations?"
+          }
+        },
+        {
+          "templateId": "t-destination-choose",
+          "role": "followup",
+          "text": {
+            "en-US": "What should I consider when choosing between these destinations?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cost-focus",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-cost-focus-bali",
+        "ev-cost-focus-maldives",
+        "ev-cost-focus-japan"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "comparison"
+        ],
+        "entityTypes": [
+          "destination"
+        ],
+        "topicIds": [
+          "sample-price"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-cost-focus",
+          "role": "primary",
+          "text": {
+            "en-US": "Can you help me compare the total cost of these destinations?"
+          }
+        },
+        {
+          "templateId": "t-cost-focus-followup-1",
+          "role": "followup",
+          "text": {
+            "en-US": "Which inclusions and transfers should I check when comparing costs?"
+          }
+        },
+        {
+          "templateId": "t-cost-focus-followup-2",
+          "role": "followup",
+          "text": {
+            "en-US": "What expenses might change the final trip cost?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "pace-fit",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-pace-fit-bali",
+        "ev-pace-fit-maldives",
+        "ev-pace-fit-japan"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "comparison"
+        ],
+        "entityTypes": [
+          "destination"
+        ],
+        "facetIds": [
+          "pace"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-pace-fit",
+          "role": "primary",
+          "text": {
+            "en-US": "Can you help me compare the pace of these destinations?"
+          }
+        },
+        {
+          "templateId": "t-pace-fit-followup-1",
+          "role": "followup",
+          "text": {
+            "en-US": "How much moving between places should I expect?"
+          }
+        },
+        {
+          "templateId": "t-pace-fit-followup-2",
+          "role": "followup",
+          "text": {
+            "en-US": "Where could I leave more time free in the itinerary?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "planning-help",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-japan-planning"
+      ],
+      "eligibility": {
+        "topicIds": [
+          "practical-planning"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-planning",
+          "role": "primary",
+          "text": {
+            "en-US": "What should I consider about this sample itinerary and what should I confirm before choosing it?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sample-package",
+      "kind": "commercial",
+      "evidenceIds": [
+        "ev-package-comparison",
+        "ev-island-rhythm"
+      ],
+      "offerIds": [
+        "offer-island-rhythm-demo"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "package-list",
+          "package-detail",
+          "comparison"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-package-help",
+          "role": "primary",
+          "text": {
+            "en-US": "Help me compare the illustrated package choices and what still needs confirmation."
+          }
+        },
+        {
+          "templateId": "t-sample-package",
+          "role": "followup",
+          "text": {
+            "en-US": "Show me the fictional sample package and its listed inclusions and exclusions; it is not a live offer or quote."
+          }
+        }
+      ]
+    },
+    {
+      "id": "travel-planning",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-travel-planning-guidance"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "practical-info"
+        ],
+        "topicIds": [
+          "practical-planning"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-travel-planning",
+          "role": "primary",
+          "text": {
+            "en-US": "What should I check before planning my trip?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "package-filter-help",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-package-guidance"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "package-list"
+        ],
+        "facetIds": [
+          "pace"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-package-filter",
+          "role": "primary",
+          "text": {
+            "en-US": "Can you help me narrow down these package options?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "destination-detail-help",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-destination-guidance"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "destination-detail"
+        ],
+        "entityTypes": [
+          "destination"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-destination-detail",
+          "role": "primary",
+          "text": {
+            "en-US": "What should I consider before choosing this destination?"
+          }
+        }
+      ]
+    },
+    {
+      "id": "package-detail-help",
+      "kind": "helpful",
+      "evidenceIds": [
+        "ev-package-guidance"
+      ],
+      "eligibility": {
+        "pageTypes": [
+          "package-detail"
+        ],
+        "entityTypes": [
+          "package"
+        ]
+      },
+      "starters": [
+        {
+          "templateId": "t-package-detail",
+          "role": "primary",
+          "text": {
+            "en-US": "What should I check before choosing this package?"
+          }
+        }
+      ]
+    }
+  ],
+  "offerSource": {
+    "type": "local-demo",
+    "catalogId": "wanderly-demo-catalog"
+  },
+  "evidenceSet": {
+    "evidenceSetId": "wanderly-demo-evidence",
+    "version": "1.0.0",
+    "entries": [
+      {
+        "evidenceId": "ev-package-comparison",
+        "version": "1.0.0",
+        "entityIds": [
+          "island-rhythm",
+          "bali-slow-living"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Island Rhythm is 7 nights with Balanced pace. Bali Slow Living is 9 nights with Relaxed pace. Actual availability and a final quote are not established."
+        }
+      },
+      {
+        "evidenceId": "ev-japan-planning",
+        "version": "1.0.0",
+        "entityIds": [
+          "japan"
+        ],
+        "topicIds": [
+          "practical-planning"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Japan involves more walking and luggage changes than an island trip. Leave space for luggage on intercity travel days; check room size and bedding for your party."
+        }
+      },
+      {
+        "evidenceId": "ev-island-rhythm",
+        "version": "1.0.0",
+        "entityIds": [
+          "island-rhythm"
+        ],
+        "topicIds": [
+          "sample-price"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Island Rhythm is 7 nights, Balanced pace, with an Ubud retreat and coastal pool villa. The sample price is $2,190. International flights and travel insurance are excluded. This is not a live offer, availability check or quote."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-bali",
+        "version": "1.0.0",
+        "entityIds": [
+          "bali"
+        ],
+        "summary": {
+          "en-US": "Changing bases means road transfers. Keep fewer stops if your priority is uninterrupted beach time."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-maldives",
+        "version": "1.0.0",
+        "entityIds": [
+          "maldives"
+        ],
+        "summary": {
+          "en-US": "Less variety beyond the resort. Meal plans, island transfers and villa types can change the total substantially."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-japan",
+        "version": "1.0.0",
+        "entityIds": [
+          "japan"
+        ],
+        "summary": {
+          "en-US": "More walking and luggage changes than an island trip. Popular seasonal dates need extra planning."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-switzerland",
+        "version": "1.0.0",
+        "entityIds": [
+          "switzerland"
+        ],
+        "summary": {
+          "en-US": "Mountain outings depend on conditions. Add a flexible day rather than making every connection tight."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-thailand",
+        "version": "1.0.0",
+        "entityIds": [
+          "thailand"
+        ],
+        "summary": {
+          "en-US": "Combining city and island or northern stays adds a domestic connection; choose one region if you want less packing."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-portugal",
+        "version": "1.0.0",
+        "entityIds": [
+          "portugal"
+        ],
+        "summary": {
+          "en-US": "Historic streets can be hilly and uneven. A central hotel and slower walking route may matter more than fitting in every sight."
+        }
+      },
+      {
+        "evidenceId": "ev-travel-planning-guidance",
+        "version": "1.0.0",
+        "topicIds": [
+          "practical-planning"
+        ],
+        "summary": {
+          "en-US": "Entry requirements and travel conditions can change; consult current official sources before making plans."
+        }
+      },
+      {
+        "evidenceId": "ev-package-guidance",
+        "version": "1.0.0",
+        "summary": {
+          "en-US": "Review package inclusions and exclusions, and confirm current price and availability before deciding."
+        }
+      },
+      {
+        "evidenceId": "ev-destination-guidance",
+        "version": "1.0.0",
+        "summary": {
+          "en-US": "Consider trip pace, logistics and the experiences you want when choosing a destination."
+        }
+      },
+      {
+        "evidenceId": "ev-cost-focus-bali",
+        "version": "1.0.0",
+        "entityIds": [
+          "bali"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Bali sample package prices vary with trip length and stay; confirm transfers and exclusions."
+        }
+      },
+      {
+        "evidenceId": "ev-cost-focus-maldives",
+        "version": "1.0.0",
+        "entityIds": [
+          "maldives"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Maldives sample package prices vary with villa and meals; confirm island transfers and exclusions."
+        }
+      },
+      {
+        "evidenceId": "ev-cost-focus-japan",
+        "version": "1.0.0",
+        "entityIds": [
+          "japan"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Japan sample package prices vary with trip length and route; confirm rail and exclusions."
+        }
+      },
+      {
+        "evidenceId": "ev-pace-fit-bali",
+        "version": "1.0.0",
+        "entityIds": [
+          "bali"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Bali sample trips combine cultural outings with flexible time and a road transfer between bases."
+        }
+      },
+      {
+        "evidenceId": "ev-pace-fit-maldives",
+        "version": "1.0.0",
+        "entityIds": [
+          "maldives"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Maldives sample trips use one island base with unhurried days and an island transfer."
+        }
+      },
+      {
+        "evidenceId": "ev-pace-fit-japan",
+        "version": "1.0.0",
+        "entityIds": [
+          "japan"
+        ],
+        "summary": {
+          "en-US": "Fictional demo: Japan sample trips include city walking, changing bases and an intercity train."
+        }
+      }
+    ]
+  },
+  "contextMap": {
+    "maxChars": 600,
+    "fields": [
+      {
+        "key": "pageType",
+        "from": "page.pageType"
+      },
+      {
+        "key": "hesitation",
+        "from": "derived.hesitation.status"
+      },
+      {
+        "key": "inProgress",
+        "from": "derived.inProgress.status"
+      }
+    ]
+  },
+  "bcBinding": {
+    "datastreamId": "demo-datastream",
+    "knowledgeIds": [
+      "wanderly-kb"
+    ]
+  },
+  "successEvent": {
+    "id": "booking.confirmed-complete",
+    "signalKind": "transaction.step",
+    "transactionPhase": "complete",
+    "pageTypes": [
+      "booking"
+    ]
+  }
+}

@@ -29,7 +29,7 @@ export default function Page() {
 					<tr><th scope="row">Best for</th>{selected.map(destination => <td key={destination.slug}>{destination.vibe.join(' + ')}</td>)}</tr>
 					<tr><th scope="row">Trip rhythm</th>{selected.map(destination => <td key={destination.slug}>{destination.tagline}</td>)}</tr>
 					<tr><th scope="row">Suggested stay</th>{selected.map(destination => <td key={destination.slug}>{destination.days}</td>)}</tr>
-					<tr><th scope="row">Illustrative starting price</th>{selected.map(destination => <td key={destination.slug}>{destination.from} per person</td>)}</tr>
+					<tr><th scope="row">From (per person)</th>{selected.map(destination => <td key={destination.slug}>{destination.from} per person</td>)}</tr>
 					<tr><th scope="row">Who it suits</th>{selected.map(destination => <td key={destination.slug}>{destination.bestFor}</td>)}</tr>
 					<tr><th scope="row">The trade-off</th>{selected.map(destination => <td key={destination.slug}>{destination.tradeoff}</td>)}</tr>
 					<tr><th scope="row">Getting around</th>{selected.map(destination => <td key={destination.slug}>{destination.gettingAround}</td>)}</tr>
@@ -38,7 +38,7 @@ export default function Page() {
 				</tbody>
 			</table></div> : <div className="notice" role="status">No destinations selected. Open a destination and choose &quot;Add to comparison&quot; to build your shortlist.</div>}
 			{selected.length > 0 && <div className="contentActions" style={{ marginTop: 25 }}>{selected.map(destination => <Link key={destination.slug} href={`/booking?destination=${destination.slug}`} className="btn" onClick={() => track('DATE_SEARCH', window.location.pathname, destination.slug)}>Check {destination.name} dates</Link>)}</div>}
-			<p className="muted">Prices and stay descriptions are illustrative, not live quotes. Seasonal conditions and entry requirements must be verified for your dates.</p>
+			<p className="muted">Prices are confirmed at booking. Seasonal conditions and entry requirements must be verified with official sources.</p>
 		</div>
 	</section></main>;
 }

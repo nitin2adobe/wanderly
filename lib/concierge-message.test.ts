@@ -6,6 +6,8 @@ import { conciergePageDestination, contextualHandoff, defaultConciergeWelcomeExa
 import { destinations } from './data.ts';
 import type { ConciergeHandoff } from './concierge-handoff.ts';
 import { journeyEvents } from './labelled-journeys.ts';
+import { minimizeEvent } from './aaa-privacy.ts';
+import { createJourneyStore } from './journey-store.ts';
 
 const handoff = (intent: ConciergeHandoff['intent'], entities: string[] = []): ConciergeHandoff => ({
   version: 1, brand: 'wanderly', intent, entities, explicitPreferences: {},
@@ -54,20 +56,38 @@ test('direct booking links override older packages and support package-only and 
 });
 
 test('booking edits use validated current-visit selections, clear deselected packages and reset on a new visit', () => {
-  const edits = journeyEvents([['PAGE_VIEW'], ['BOOKING_STEP']]).map(event => ({
+  const edits = journeyEvents([['PAGE_VIEW'], ['BOOKING_STEP']]).map(event => minimizeEvent({
     ...event, page: '/booking?destination=japan&package=cities-seasons',
-    ...(event.eventType === 'BOOKING_STEP' ? { metadata: { destinationSlug: 'bali', packageId: 'island-rhythm' } } : {}),
+    ...(event.eventType === 'BOOKING_STEP' ? { entity: 'island-rhythm', metadata: { freeText: 'private' } } : {}),
   }));
+  assert.equal(edits[1].metadata, undefined);
   const selected = manualConciergeSuggestion(edits, '/booking', '?destination=japan&package=cities-seasons');
   assert.match(selected?.initialMessage ?? '', /Island Rhythm/);
   assert.doesNotMatch(selected?.welcomeExamples.join(' ') ?? '', /Japan/);
-  const cleared = [...edits, { ...edits[1], metadata: { destinationSlug: 'bali' } }];
+  const cleared = [...edits, minimizeEvent({ ...edits[1], entity: 'bali' })];
   assert.match(manualConciergeSuggestion(cleared, '/booking', '?destination=japan')?.initialMessage ?? '', /package options for Bali/);
   const newVisit = [...edits, { ...edits[0], page: '/booking?destination=japan&package=japan-food-trails' }];
   assert.match(manualConciergeSuggestion(newVisit, '/booking', '?destination=japan&package=japan-food-trails')?.initialMessage ?? '', /Japan Food Trails/);
-  const invalid = [...edits, { ...edits[0] }, { ...edits[1], metadata: { destinationSlug: 'private-input', packageId: 'island-rhythm' } }];
+  const invalid = [...edits, { ...edits[0] }, minimizeEvent({ ...edits[1], entity: 'private-input' })];
   assert.match(manualConciergeSuggestion(invalid, '/booking', '?destination=japan&package=cities-seasons')?.initialMessage ?? '', /Cities & Seasons/);
   assert.equal(manualConciergeSuggestion(edits, '/booking', '?destination=unknown'), undefined);
+});
+
+test('stored booking selections remain available after privacy minimization', () => {
+  const data = new Map<string, string>();
+  const session = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => { data.set(key, value); },
+    removeItem: (key: string) => { data.delete(key); },
+  };
+  let id = 0;
+  const store = createJourneyStore({ session, isGranted: () => true, makeId: prefix => `${prefix}_${++id}` });
+  store.track('PAGE_VIEW', '/booking?destination=japan&package=cities-seasons');
+  store.track('BOOKING_STEP', '/booking', 'island-rhythm', { freeText: 'private' });
+  assert.match(manualConciergeSuggestion(store.getEvents(), '/booking', '?destination=japan')?.initialMessage ?? '', /Island Rhythm/);
+  assert.doesNotMatch(JSON.stringify([...data.values()]), /private/);
+  store.track('BOOKING_STEP', '/booking', 'bali');
+  assert.match(manualConciergeSuggestion(store.getEvents(), '/booking', '?destination=japan')?.initialMessage ?? '', /package options for Bali/);
 });
 
 test('unscoped manual openings respect the current shortlist and an empty comparison does not resurrect old destinations', () => {

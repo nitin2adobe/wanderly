@@ -23,10 +23,10 @@ function bookingPageSelection(search: string) {
 
 function bookingEventSelection(event: WanderlyEvent) {
   if (event.page.split('?')[0] !== '/booking' || (event.eventType !== 'BOOKING_START' && event.eventType !== 'BOOKING_STEP')) return;
-  const destination = event.metadata?.destinationSlug;
-  const pack = event.metadata?.packageId;
-  if (typeof destination !== 'string' || !getDestination(destination) || (pack !== undefined && typeof pack !== 'string')) return;
-  return getBookingSelection(destination, pack);
+  const pack = getPackage(event.entity ?? '');
+  if (pack) return getBookingSelection(pack.slug, pack.id);
+  const destination = getDestination(event.entity ?? '');
+  return destination ? getBookingSelection(destination.slug) : undefined;
 }
 
 type QuestionContext = Pick<ConciergeHandoff, 'brand' | 'intent' | 'entities' | 'topic'>;
