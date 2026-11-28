@@ -2,5 +2,3 @@ node_modules
 .next
 .env*
 .DS_Store
-.env.example
-aaa-bedrock-api-key

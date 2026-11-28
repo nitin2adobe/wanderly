@@ -41,6 +41,6 @@ test('policy overrides change the policy rule shown for a step', () => {
   const events = journeyEvents([
     ['DESTINATION_VIEW', 'bali'], ['DESTINATION_VIEW', 'maldives'], ['DESTINATION_VIEW', 'bali'], ['COMPARE_VIEW'], ['DESTINATION_VIEW', 'maldives'],
   ]);
-  const strict = buildSignalTimeline(events, { minConfidence: 0.95, maxInvitationsPerSession: 2, cooldownMs: 600_000 });
+  const strict = buildSignalTimeline(events, { minConfidence: 0.95, maxInvitationsPerSession: 2, cooldownMs: 120_000 });
   assert.ok(strict.some(s => s.decision === 'ASSIST' && s.policyRule === 'LOW_CONFIDENCE'));
 });

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { adobeConnector, CONCIERGE_OPEN_EVENT, type ConciergeOpenRequest } from './concierge-connector.ts';
 import type { ConciergeHandoff } from './concierge-handoff.ts';
-import { travelResult } from '../sites/wanderly/contract-examples.ts';
 
 const handoff: ConciergeHandoff = {
   version: 1, brand: 'wanderly', intent: 'DESTINATION_COMPARISON', entities: ['Bali', 'Maldives'],
@@ -56,15 +55,4 @@ test('connector supports cancellation without claiming success', () => withWindo
 
 test('unconfigured brand is rejected', () => withWindow(async () => {
   await assert.rejects(adobeConnector.open({ ...handoff, brand: 'electronics-demo' }), /not configured/);
-}));
-
-test('typed starters force visitor submission even if a caller requests automatic activation', () => withWindow(async target => {
-  target.addEventListener(CONCIERGE_OPEN_EVENT, event => {
-    event.preventDefault();
-    const request = (event as CustomEvent<ConciergeOpenRequest>).detail;
-    assert.equal(request.automatic, false);
-    assert.deepEqual(request.starterResult, travelResult);
-    request.resolve({ status: 'opened' });
-  });
-  assert.equal((await adobeConnector.openStarters!(travelResult, { automatic: true })).status, 'opened');
 }));

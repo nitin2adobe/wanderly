@@ -1,5 +1,5 @@
 import type { WanderlyEvent } from './events.ts';
-import { conciergePriorities, type ConciergePriority } from './concierge-handoff.ts';
+import type { ConciergePriority } from './concierge-handoff.ts';
 
 export type SessionMemory = {
   /** Dismissals made by the visitor; withdrawals by the plugin itself do not count. */
@@ -9,7 +9,7 @@ export type SessionMemory = {
   preferredPriority?: ConciergePriority;
 };
 
-const PRIORITIES = conciergePriorities;
+const PRIORITIES: ConciergePriority[] = ['BUDGET', 'ACTIVITIES', 'TRIP_LENGTH'];
 
 /** Derives what the plugin has learned this session from its own lifecycle events. */
 export function deriveMemory(sessionEvents: WanderlyEvent[]): SessionMemory {
